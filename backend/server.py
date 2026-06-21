@@ -327,7 +327,8 @@ async def gmail_login(user_id: str = "default_user"):
     
     url, state = flow.authorization_url(
         access_type='offline',
-        prompt='consent'
+        prompt='consent',
+        include_granted_scopes='true'
     )
     
     await save_state(state, user_id)
@@ -336,41 +337,45 @@ async def gmail_login(user_id: str = "default_user"):
 @api_router.get("/oauth/gmail/callback")
 async def gmail_callback(code: str, state: str):
     """Handle Gmail OAuth callback"""
-    user_id = await verify_state(state)
-    
-    flow = Flow.from_client_config({
-        "web": {
+    try:
+        user_id = await verify_state(state)
+        
+        flow = Flow.from_client_config({
+            "web": {
+                "client_id": GOOGLE_CLIENT_ID,
+                "client_secret": GOOGLE_CLIENT_SECRET,
+                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                "token_uri": "https://oauth2.googleapis.com/token"
+            }
+        }, scopes=SCOPES, redirect_uri=REDIRECT_URI, state=state)
+        
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            flow.fetch_token(code=code)
+        
+        creds = flow.credentials
+        
+        # Save tokens to database
+        token_data = {
+            "user_id": user_id,
+            "access_token": creds.token,
+            "refresh_token": creds.refresh_token,
+            "expires_at": (datetime.now(timezone.utc) + timedelta(seconds=3600)).isoformat(),
             "client_id": GOOGLE_CLIENT_ID,
             "client_secret": GOOGLE_CLIENT_SECRET,
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
             "token_uri": "https://oauth2.googleapis.com/token"
         }
-    }, scopes=SCOPES, redirect_uri=REDIRECT_URI)
-    
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore")
-        flow.fetch_token(code=code)
-    
-    creds = flow.credentials
-    
-    # Save tokens to database
-    token_data = {
-        "user_id": user_id,
-        "access_token": creds.token,
-        "refresh_token": creds.refresh_token,
-        "expires_at": (datetime.now(timezone.utc) + timedelta(seconds=3600)).isoformat(),
-        "client_id": GOOGLE_CLIENT_ID,
-        "client_secret": GOOGLE_CLIENT_SECRET,
-        "token_uri": "https://oauth2.googleapis.com/token"
-    }
-    
-    await db.gmail_tokens.update_one(
-        {"user_id": user_id},
-        {"$set": token_data},
-        upsert=True
-    )
-    
-    return RedirectResponse("/")
+        
+        await db.gmail_tokens.update_one(
+            {"user_id": user_id},
+            {"$set": token_data},
+            upsert=True
+        )
+        
+        return RedirectResponse("/")
+    except Exception as e:
+        logger.error(f"OAuth callback error: {e}")
+        return RedirectResponse(f"/?error=oauth_failed")
 
 @api_router.get("/workflow/status", response_model=WorkflowStatus)
 async def get_workflow_status():
