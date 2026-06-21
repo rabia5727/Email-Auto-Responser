@@ -69,6 +69,7 @@ class GmailToken(BaseModel):
 class ProcessedEmail(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_email: str
     email_id: str
     from_email: str
     subject: str
@@ -81,6 +82,7 @@ class ProcessedEmail(BaseModel):
 class ErrorLog(BaseModel):
     model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    user_email: str
     email_id: Optional[str]
     error_message: str
     error_type: str
