@@ -160,7 +160,10 @@ function App() {
 
   // Connect Gmail
   const connectGmail = () => {
-    window.location.href = `${API}/oauth/gmail/login?user_id=default_user`;
+    // Don't use loading state for redirect
+    // Just redirect immediately
+    const redirectUrl = `${API}/oauth/gmail/login?user_id=default_user`;
+    window.location.href = redirectUrl;
   };
 
   // Refresh data
