@@ -11,10 +11,12 @@ export default function Settings({ isOpen, onClose, onSave }) {
     auto_send_drafts: false,
     custom_prompt: "You are a professional email assistant. Reply to emails in a helpful, professional, and concise manner.",
     sender_whitelist: [],
-    sender_blacklist: []
+    sender_blacklist: [],
+    vip_senders: []
   });
   const [whitelistInput, setWhitelistInput] = useState("");
   const [blacklistInput, setBlacklistInput] = useState("");
+  const [vipInput, setVipInput] = useState("");
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -78,6 +80,23 @@ export default function Settings({ isOpen, onClose, onSave }) {
     setSettings({
       ...settings,
       sender_blacklist: settings.sender_blacklist.filter(e => e !== email)
+    });
+  };
+
+  const addToVIP = () => {
+    if (vipInput.trim()) {
+      setSettings({
+        ...settings,
+        vip_senders: [...settings.vip_senders, vipInput.trim()]
+      });
+      setVipInput("");
+    }
+  };
+
+  const removeFromVIP = (email) => {
+    setSettings({
+      ...settings,
+      vip_senders: settings.vip_senders.filter(e => e !== email)
     });
   };
 
@@ -309,6 +328,74 @@ export default function Settings({ isOpen, onClose, onSave }) {
                 {email}
                 <button
                   onClick={() => removeFromBlacklist(email)}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    padding: 0,
+                    display: 'flex'
+                  }}
+                >
+                  <X size={14} />
+                </button>
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* VIP Senders */}
+        <div style={{ marginBottom: '2rem', backgroundColor: '#FFF9E6', padding: '1.5rem', borderRadius: '4px', border: '2px solid #FFC107' }}>
+          <label style={{ display: 'block', fontWeight: 600, marginBottom: '0.5rem', color: '#000' }}>
+            ⭐ VIP Senders (Skip for Manual Reply)
+          </label>
+          <p style={{ fontSize: '0.875rem', color: '#525252', marginBottom: '0.75rem' }}>
+            Important contacts that require personal attention. These emails will NOT be auto-replied.
+          </p>
+          <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '0.5rem' }}>
+            <input
+              type="email"
+              data-testid="vip-input"
+              value={vipInput}
+              onChange={(e) => setVipInput(e.target.value)}
+              onKeyPress={(e) => e.key === 'Enter' && addToVIP()}
+              placeholder="boss@company.com"
+              style={{
+                flex: 1,
+                padding: '0.75rem',
+                border: '1px solid #E5E5E5',
+                borderRadius: '2px',
+                fontSize: '0.95rem'
+              }}
+            />
+            <button
+              onClick={addToVIP}
+              data-testid="add-vip-btn"
+              className="btn-secondary"
+              style={{ padding: '0.75rem 1.5rem', backgroundColor: '#FFC107', borderColor: '#FFC107', color: '#000' }}
+            >
+              Add VIP
+            </button>
+          </div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem' }}>
+            {settings.vip_senders.map((email, idx) => (
+              <span
+                key={idx}
+                data-testid={`vip-item-${idx}`}
+                style={{
+                  backgroundColor: '#FFF3CD',
+                  color: '#856404',
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: '2px',
+                  fontSize: '0.875rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontWeight: 600
+                }}
+              >
+                ⭐ {email}
+                <button
+                  onClick={() => removeFromVIP(email)}
                   style={{
                     background: 'none',
                     border: 'none',

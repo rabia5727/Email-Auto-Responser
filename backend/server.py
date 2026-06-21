@@ -102,6 +102,7 @@ class WorkflowSettings(BaseModel):
     custom_prompt: str = "You are a professional email assistant. Reply to emails in a helpful, professional, and concise manner."
     sender_whitelist: List[str] = []
     sender_blacklist: List[str] = []
+    vip_senders: List[str] = []  # Skip these for manual reply
 
 class WorkflowStatus(BaseModel):
     enabled: bool
@@ -227,6 +228,7 @@ async def process_email_workflow():
         custom_prompt = config.get('custom_prompt') if config else None
         whitelist = config.get('sender_whitelist', []) if config else []
         blacklist = config.get('sender_blacklist', []) if config else []
+        vip_senders = config.get('vip_senders', []) if config else []
         
         # Build Gmail service
         service = build('gmail', 'v1', credentials=creds)
@@ -260,6 +262,11 @@ async def process_email_workflow():
                 email_match = re.search(r'<(.+?)>|^(.+?)$', from_email)
                 sender_email = email_match.group(1) or email_match.group(2) if email_match else from_email
                 sender_email = sender_email.strip()
+                
+                # Skip VIP senders (for manual reply)
+                if vip_senders and sender_email in vip_senders:
+                    logger.info(f"Skipping VIP sender {sender_email} - requires manual reply")
+                    continue
                 
                 # Apply whitelist filter
                 if whitelist and sender_email not in whitelist:
@@ -570,7 +577,8 @@ async def get_settings():
         "auto_send_drafts": config.get('auto_send_drafts', False),
         "custom_prompt": config.get('custom_prompt', "You are a professional email assistant. Reply to emails in a helpful, professional, and concise manner."),
         "sender_whitelist": config.get('sender_whitelist', []),
-        "sender_blacklist": config.get('sender_blacklist', [])
+        "sender_blacklist": config.get('sender_blacklist', []),
+        "vip_senders": config.get('vip_senders', [])
     }
 
 @api_router.post("/settings")

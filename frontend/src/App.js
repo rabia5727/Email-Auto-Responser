@@ -33,7 +33,7 @@ function App() {
   const [errors, setErrors] = useState([]);
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('emails');
+  const [activeTab, setActiveTab] = useState('dashboard');
   const [runningWorkflow, setRunningWorkflow] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
 
@@ -177,6 +177,22 @@ function App() {
           <nav style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
             <button
               data-testid="nav-dashboard-btn"
+              onClick={() => setActiveTab('dashboard')}
+              style={{
+                textAlign: 'left',
+                padding: '0.75rem 1rem',
+                background: activeTab === 'dashboard' ? '#F3F4F6' : 'transparent',
+                border: 'none',
+                borderRadius: '2px',
+                cursor: 'pointer',
+                fontWeight: activeTab === 'dashboard' ? 600 : 400,
+                color: activeTab === 'dashboard' ? '#002FA7' : '#525252'
+              }}
+            >
+              Dashboard
+            </button>
+            <button
+              data-testid="nav-emails-btn"
               onClick={() => setActiveTab('emails')}
               style={{
                 textAlign: 'left',
@@ -189,7 +205,7 @@ function App() {
                 color: activeTab === 'emails' ? '#002FA7' : '#525252'
               }}
             >
-              Dashboard
+              Processed Emails
             </button>
             <button
               data-testid="nav-errors-btn"
@@ -403,7 +419,141 @@ function App() {
         </div>
 
         {/* Content Tabs */}
-        {activeTab === 'emails' ? (
+        {activeTab === 'dashboard' ? (
+          /* Dashboard Overview */
+          <div>
+            <div className="card" data-testid="dashboard-overview">
+              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1.5rem' }}>
+                Workflow Overview
+              </h3>
+              
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1.5rem', marginBottom: '2rem' }}>
+                <div>
+                  <p style={{ fontSize: '0.75rem', color: '#525252', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Status
+                  </p>
+                  <p style={{ fontSize: '1.5rem', fontWeight: 700 }}>
+                    {workflowStatus.enabled ? '🟢 Active' : '⚪ Inactive'}
+                  </p>
+                </div>
+                
+                <div>
+                  <p style={{ fontSize: '0.75rem', color: '#525252', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Success Rate
+                  </p>
+                  <p style={{ fontSize: '1.5rem', fontWeight: 700, color: '#059669' }}>
+                    {workflowStatus.total_processed > 0 
+                      ? Math.round((workflowStatus.total_processed / (workflowStatus.total_processed + workflowStatus.total_errors)) * 100) 
+                      : 0}%
+                  </p>
+                </div>
+                
+                <div>
+                  <p style={{ fontSize: '0.75rem', color: '#525252', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Last Run
+                  </p>
+                  <p style={{ fontSize: '1rem', fontWeight: 600 }}>
+                    {workflowStatus.last_run ? new Date(workflowStatus.last_run).toLocaleTimeString() : 'Never'}
+                  </p>
+                </div>
+              </div>
+
+              {!workflowStatus.is_authenticated ? (
+                <div style={{ 
+                  backgroundColor: '#FFF9E6', 
+                  border: '2px solid #FFC107', 
+                  borderRadius: '4px', 
+                  padding: '2rem', 
+                  textAlign: 'center' 
+                }}>
+                  <h4 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1rem' }}>
+                    🔗 Get Started
+                  </h4>
+                  <p style={{ marginBottom: '1.5rem', color: '#525252' }}>
+                    Connect your Gmail account to start automating email replies
+                  </p>
+                  <button
+                    onClick={connectGmail}
+                    className="btn-primary"
+                    style={{ padding: '1rem 2rem', fontSize: '1rem' }}
+                  >
+                    <LinkIcon size={20} style={{ display: 'inline', marginRight: '0.5rem' }} />
+                    Connect Gmail Now
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div style={{ 
+                    backgroundColor: '#F0F9FF', 
+                    border: '1px solid #002FA7', 
+                    borderRadius: '4px', 
+                    padding: '1.5rem', 
+                    marginBottom: '2rem' 
+                  }}>
+                    <h4 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '1rem', color: '#002FA7' }}>
+                      💡 Quick Tips
+                    </h4>
+                    <ul style={{ margin: 0, paddingLeft: '1.5rem', color: '#525252' }}>
+                      <li style={{ marginBottom: '0.5rem' }}>
+                        Click <strong>"Run Now"</strong> to immediately process unread emails
+                      </li>
+                      <li style={{ marginBottom: '0.5rem' }}>
+                        Use <strong>"Settings"</strong> to add VIP senders (emails that skip auto-reply)
+                      </li>
+                      <li style={{ marginBottom: '0.5rem' }}>
+                        Enable <strong>"Start Workflow"</strong> for automatic processing every 5 minutes
+                      </li>
+                      <li>
+                        Turn OFF <strong>"Auto-send"</strong> to review drafts before sending
+                      </li>
+                    </ul>
+                  </div>
+
+                  {/* Recent Activity */}
+                  <h4 style={{ fontSize: '1.125rem', fontWeight: 700, marginBottom: '1rem' }}>
+                    Recent Activity
+                  </h4>
+                  {processedEmails.slice(0, 5).length > 0 ? (
+                    <div>
+                      {processedEmails.slice(0, 5).map((email) => (
+                        <div
+                          key={email.id}
+                          style={{
+                            borderBottom: '1px solid #E5E5E5',
+                            padding: '1rem 0',
+                            display: 'flex',
+                            justifyContent: 'space-between',
+                            alignItems: 'center'
+                          }}
+                        >
+                          <div>
+                            <p style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{email.subject}</p>
+                            <p style={{ fontSize: '0.875rem', color: '#525252' }}>From: {email.from_email}</p>
+                          </div>
+                          <span style={{
+                            backgroundColor: email.status === 'success' ? '#D1FAE5' : '#FEE2E2',
+                            color: email.status === 'success' ? '#059669' : '#E53935',
+                            padding: '0.25rem 0.75rem',
+                            borderRadius: '2px',
+                            fontSize: '0.75rem',
+                            fontWeight: 600,
+                            textTransform: 'uppercase'
+                          }}>
+                            {email.status === 'success' ? '✓ Processed' : '✗ Failed'}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p style={{ color: '#525252', textAlign: 'center', padding: '2rem' }}>
+                      No emails processed yet. Click "Run Now" to start!
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        ) : activeTab === 'emails' ? (
           <div style={{ display: 'grid', gridTemplateColumns: selectedEmail ? '1fr 1fr' : '1fr', gap: '1.5rem' }}>
             {/* Email List */}
             <div className="card" data-testid="email-list-card">
