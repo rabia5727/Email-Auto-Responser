@@ -518,11 +518,68 @@ async def trigger_workflow_manually():
         return {"message": f"Workflow failed: {str(e)}", "success": False}
 
 @api_router.get("/emails/processed")
-async def get_processed_emails(limit: int = 50):
-    """Get processed emails"""
-    emails = await db.processed_emails.find({}, {"_id": 0}).sort("processed_at", -1).to_list(limit)
+async def get_processed_emails(
+    limit: int = 20, 
+    skip: int = 0,
+    days: int = None  # Filter by last N days
+):
+    """Get processed emails with pagination and filters"""
+    query = {}
     
-    # Convert datetime strings back to datetime objects for JSON response
+    # Add date filter if specified
+    if days:
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+        query['processed_at'] = {'$gte': cutoff_date.isoformat()}
+    
+    # Get total count
+    total = await db.processed_emails.count_documents(query)
+    
+    # Get paginated emails
+    emails = await db.processed_emails.find(query, {"_id": 0})\
+        .sort("processed_at", -1)\
+        .skip(skip)\
+        .limit(limit)\
+        .to_list(limit)
+    
+    # Convert datetime strings
+    for email in emails:
+        if isinstance(email.get('processed_at'), str):
+            email['processed_at'] = datetime.fromisoformat(email['processed_at'])
+    
+    return {
+        "emails": emails,
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
+
+@api_router.delete("/emails/cleanup")
+async def cleanup_old_emails(days: int = 30):
+    """Delete processed emails older than specified days"""
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+    result = await db.processed_emails.delete_many({
+        'processed_at': {'$lt': cutoff_date.isoformat()}
+    })
+    return {
+        "message": f"Deleted {result.deleted_count} emails older than {days} days",
+        "deleted_count": result.deleted_count
+    }
+
+@api_router.get("/emails/search")
+async def search_emails(q: str, limit: int = 20):
+    """Search processed emails by sender or subject"""
+    query = {
+        '$or': [
+            {'from_email': {'$regex': q, '$options': 'i'}},
+            {'subject': {'$regex': q, '$options': 'i'}}
+        ]
+    }
+    
+    emails = await db.processed_emails.find(query, {"_id": 0})\
+        .sort("processed_at", -1)\
+        .limit(limit)\
+        .to_list(limit)
+    
     for email in emails:
         if isinstance(email.get('processed_at'), str):
             email['processed_at'] = datetime.fromisoformat(email['processed_at'])
@@ -600,16 +657,45 @@ async def logout(user_id: str = "default_user"):
     return {"message": "No connection found", "success": False}
 
 @api_router.get("/errors")
-async def get_errors(limit: int = 50):
-    """Get error logs"""
-    errors = await db.error_logs.find({}, {"_id": 0}).sort("timestamp", -1).to_list(limit)
+async def get_errors(limit: int = 20, skip: int = 0, days: int = None):
+    """Get error logs with pagination"""
+    query = {}
+    
+    if days:
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+        query['timestamp'] = {'$gte': cutoff_date.isoformat()}
+    
+    total = await db.error_logs.count_documents(query)
+    
+    errors = await db.error_logs.find(query, {"_id": 0})\
+        .sort("timestamp", -1)\
+        .skip(skip)\
+        .limit(limit)\
+        .to_list(limit)
     
     # Convert datetime strings
     for error in errors:
         if isinstance(error.get('timestamp'), str):
             error['timestamp'] = datetime.fromisoformat(error['timestamp'])
     
-    return errors
+    return {
+        "errors": errors,
+        "total": total,
+        "skip": skip,
+        "limit": limit
+    }
+
+@api_router.delete("/errors/cleanup")
+async def cleanup_old_errors(days: int = 30):
+    """Delete error logs older than specified days"""
+    cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
+    result = await db.error_logs.delete_many({
+        'timestamp': {'$lt': cutoff_date.isoformat()}
+    })
+    return {
+        "message": f"Deleted {result.deleted_count} errors older than {days} days",
+        "deleted_count": result.deleted_count
+    }
 
 # Include router
 app.include_router(api_router)

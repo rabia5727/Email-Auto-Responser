@@ -30,12 +30,21 @@ function App() {
     is_authenticated: false
   });
   const [processedEmails, setProcessedEmails] = useState([]);
+  const [emailsTotal, setEmailsTotal] = useState(0);
+  const [emailsPage, setEmailsPage] = useState(0);
+  const [emailsFilter, setEmailsFilter] = useState('all'); // 'all', '7days', '30days'
   const [errors, setErrors] = useState([]);
+  const [errorsTotal, setErrorsTotal] = useState(0);
+  const [errorsPage, setErrorsPage] = useState(0);
+  const [errorsFilter, setErrorsFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [runningWorkflow, setRunningWorkflow] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+
+  const ITEMS_PER_PAGE = 20;
 
   // Fetch workflow status
   const fetchWorkflowStatus = async () => {
@@ -48,20 +57,34 @@ function App() {
   };
 
   // Fetch processed emails
-  const fetchProcessedEmails = async () => {
+  const fetchProcessedEmails = async (page = 0, filter = 'all') => {
     try {
-      const response = await axios.get(`${API}/emails/processed`);
-      setProcessedEmails(response.data);
+      const days = filter === '7days' ? 7 : filter === '30days' ? 30 : null;
+      const params = new URLSearchParams({
+        limit: ITEMS_PER_PAGE,
+        skip: page * ITEMS_PER_PAGE,
+        ...(days && { days })
+      });
+      const response = await axios.get(`${API}/emails/processed?${params}`);
+      setProcessedEmails(response.data.emails);
+      setEmailsTotal(response.data.total);
     } catch (error) {
       console.error("Error fetching emails:", error);
     }
   };
 
   // Fetch errors
-  const fetchErrors = async () => {
+  const fetchErrors = async (page = 0, filter = 'all') => {
     try {
-      const response = await axios.get(`${API}/errors`);
-      setErrors(response.data);
+      const days = filter === '7days' ? 7 : filter === '30days' ? 30 : null;
+      const params = new URLSearchParams({
+        limit: ITEMS_PER_PAGE,
+        skip: page * ITEMS_PER_PAGE,
+        ...(days && { days })
+      });
+      const response = await axios.get(`${API}/errors?${params}`);
+      setErrors(response.data.errors);
+      setErrorsTotal(response.data.total);
     } catch (error) {
       console.error("Error fetching errors:", error);
     }
@@ -129,10 +152,26 @@ function App() {
     setLoading(true);
     await Promise.all([
       fetchWorkflowStatus(),
-      fetchProcessedEmails(),
-      fetchErrors()
+      fetchProcessedEmails(emailsPage, emailsFilter),
+      fetchErrors(errorsPage, errorsFilter)
     ]);
     setLoading(false);
+  };
+
+  // Cleanup old data
+  const cleanupOldData = async (type, days) => {
+    if (!window.confirm(`Delete all ${type} older than ${days} days? This cannot be undone.`)) {
+      return;
+    }
+    try {
+      const endpoint = type === 'emails' ? '/emails/cleanup' : '/errors/cleanup';
+      const response = await axios.delete(`${API}${endpoint}?days=${days}`);
+      alert(`✓ ${response.data.message}`);
+      refreshData();
+    } catch (error) {
+      console.error(`Error cleaning up ${type}:`, error);
+      alert(`✗ Failed to cleanup ${type}`);
+    }
   };
 
   useEffect(() => {
@@ -141,12 +180,21 @@ function App() {
     // Poll every 30 seconds
     const interval = setInterval(() => {
       fetchWorkflowStatus();
-      fetchProcessedEmails();
-      fetchErrors();
+      fetchProcessedEmails(emailsPage, emailsFilter);
+      fetchErrors(errorsPage, errorsFilter);
     }, 30000);
     
     return () => clearInterval(interval);
   }, []);
+
+  // Refetch when page or filter changes
+  useEffect(() => {
+    fetchProcessedEmails(emailsPage, emailsFilter);
+  }, [emailsPage, emailsFilter]);
+
+  useEffect(() => {
+    fetchErrors(errorsPage, errorsFilter);
+  }, [errorsPage, errorsFilter]);
 
   const formatDate = (dateString) => {
     if (!dateString) return 'Never';
@@ -557,9 +605,42 @@ function App() {
           <div style={{ display: 'grid', gridTemplateColumns: selectedEmail ? '1fr 1fr' : '1fr', gap: '1.5rem' }}>
             {/* Email List */}
             <div className="card" data-testid="email-list-card">
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 700, marginBottom: '1rem' }}>
-                Processed Emails
-              </h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem', flexWrap: 'wrap', gap: '1rem' }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>
+                  Processed Emails
+                </h3>
+                
+                {/* Filters & Actions */}
+                <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                  <select
+                    value={emailsFilter}
+                    onChange={(e) => { setEmailsFilter(e.target.value); setEmailsPage(0); }}
+                    style={{
+                      padding: '0.5rem',
+                      border: '1px solid #E5E5E5',
+                      borderRadius: '2px',
+                      fontSize: '0.875rem'
+                    }}
+                  >
+                    <option value="all">All Time</option>
+                    <option value="7days">Last 7 Days</option>
+                    <option value="30days">Last 30 Days</option>
+                  </select>
+                  
+                  <button
+                    onClick={() => cleanupOldData('emails', 30)}
+                    className="btn-secondary"
+                    style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+                  >
+                    Clear Old
+                  </button>
+                </div>
+              </div>
+
+              {/* Count Info */}
+              <p style={{ fontSize: '0.875rem', color: '#525252', marginBottom: '1rem' }}>
+                Showing {processedEmails.length} of {emailsTotal} emails
+              </p>
               
               {processedEmails.length === 0 ? (
                 <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
@@ -596,6 +677,49 @@ function App() {
                       </p>
                     </div>
                   ))}
+                </div>
+              )}
+
+              {/* Pagination */}
+              {emailsTotal > ITEMS_PER_PAGE && (
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  alignItems: 'center', 
+                  gap: '1rem', 
+                  marginTop: '1.5rem',
+                  paddingTop: '1rem',
+                  borderTop: '1px solid #E5E5E5'
+                }}>
+                  <button
+                    onClick={() => setEmailsPage(Math.max(0, emailsPage - 1))}
+                    disabled={emailsPage === 0}
+                    className="btn-secondary"
+                    style={{
+                      padding: '0.5rem 1rem',
+                      fontSize: '0.875rem',
+                      opacity: emailsPage === 0 ? 0.5 : 1,
+                      cursor: emailsPage === 0 ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    Previous
+                  </button>
+                  <span style={{ fontSize: '0.875rem', color: '#525252' }}>
+                    Page {emailsPage + 1} of {Math.ceil(emailsTotal / ITEMS_PER_PAGE)}
+                  </span>
+                  <button
+                    onClick={() => setEmailsPage(emailsPage + 1)}
+                    disabled={(emailsPage + 1) * ITEMS_PER_PAGE >= emailsTotal}
+                    className="btn-secondary"
+                    style={{
+                      padding: '0.5rem 1rem',
+                      fontSize: '0.875rem',
+                      opacity: (emailsPage + 1) * ITEMS_PER_PAGE >= emailsTotal ? 0.5 : 1,
+                      cursor: (emailsPage + 1) * ITEMS_PER_PAGE >= emailsTotal ? 'not-allowed' : 'pointer'
+                    }}
+                  >
+                    Next
+                  </button>
                 </div>
               )}
             </div>
@@ -661,10 +785,43 @@ function App() {
         ) : (
           /* Error Logs */
           <div className="card" data-testid="error-logs-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-              <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Error Logs</h3>
-              <AlertTriangle size={24} color="#E53935" />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 700 }}>Error Logs</h3>
+                <AlertTriangle size={24} color="#E53935" />
+              </div>
+
+              {/* Filters & Actions */}
+              <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                <select
+                  value={errorsFilter}
+                  onChange={(e) => { setErrorsFilter(e.target.value); setErrorsPage(0); }}
+                  style={{
+                    padding: '0.5rem',
+                    border: '1px solid #E5E5E5',
+                    borderRadius: '2px',
+                    fontSize: '0.875rem'
+                  }}
+                >
+                  <option value="all">All Time</option>
+                  <option value="7days">Last 7 Days</option>
+                  <option value="30days">Last 30 Days</option>
+                </select>
+                
+                <button
+                  onClick={() => cleanupOldData('errors', 30)}
+                  className="btn-secondary"
+                  style={{ padding: '0.5rem 1rem', fontSize: '0.875rem' }}
+                >
+                  Clear Old
+                </button>
+              </div>
             </div>
+
+            {/* Count Info */}
+            <p style={{ fontSize: '0.875rem', color: '#525252', marginBottom: '1rem' }}>
+              Showing {errors.length} of {errorsTotal} errors
+            </p>
 
             {errors.length === 0 ? (
               <div style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-muted)' }}>
@@ -689,6 +846,49 @@ function App() {
                     )}
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Pagination */}
+            {errorsTotal > ITEMS_PER_PAGE && (
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center', 
+                gap: '1rem', 
+                marginTop: '1.5rem',
+                paddingTop: '1rem',
+                borderTop: '1px solid #E5E5E5'
+              }}>
+                <button
+                  onClick={() => setErrorsPage(Math.max(0, errorsPage - 1))}
+                  disabled={errorsPage === 0}
+                  className="btn-secondary"
+                  style={{
+                    padding: '0.5rem 1rem',
+                    fontSize: '0.875rem',
+                    opacity: errorsPage === 0 ? 0.5 : 1,
+                    cursor: errorsPage === 0 ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Previous
+                </button>
+                <span style={{ fontSize: '0.875rem', color: '#525252' }}>
+                  Page {errorsPage + 1} of {Math.ceil(errorsTotal / ITEMS_PER_PAGE)}
+                </span>
+                <button
+                  onClick={() => setErrorsPage(errorsPage + 1)}
+                  disabled={(errorsPage + 1) * ITEMS_PER_PAGE >= errorsTotal}
+                  className="btn-secondary"
+                  style={{
+                    padding: '0.5rem 1rem',
+                    fontSize: '0.875rem',
+                    opacity: (errorsPage + 1) * ITEMS_PER_PAGE >= errorsTotal ? 0.5 : 1,
+                    cursor: (errorsPage + 1) * ITEMS_PER_PAGE >= errorsTotal ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  Next
+                </button>
               </div>
             )}
           </div>
