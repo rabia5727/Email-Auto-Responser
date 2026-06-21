@@ -97,17 +97,18 @@ class WorkflowStatus(BaseModel):
     is_authenticated: bool
 
 # Helper functions
-async def save_state(state: str, user_id: str, ttl: int = 600):
-    """Save OAuth state with TTL"""
+async def save_state(state: str, user_id: str, flow_data: dict, ttl: int = 600):
+    """Save OAuth state and flow data with TTL"""
     await db.oauth_states.insert_one({
         "state": state,
         "user_id": user_id,
+        "flow_data": flow_data,
         "created_at": datetime.now(timezone.utc),
         "expires_at": datetime.now(timezone.utc) + timedelta(seconds=ttl)
     })
 
-async def verify_state(state: str) -> str:
-    """Verify and return user_id from state"""
+async def get_and_delete_state(state: str) -> tuple:
+    """Verify and return user_id and flow_data from state, then delete"""
     doc = await db.oauth_states.find_one({"state": state})
     if not doc:
         raise HTTPException(status_code=400, detail="Invalid state")
@@ -117,7 +118,7 @@ async def verify_state(state: str) -> str:
     
     # Clean up used state
     await db.oauth_states.delete_one({"state": state})
-    return doc["user_id"]
+    return doc["user_id"], doc.get("flow_data", {})
 
 async def get_credentials(user_id: str = "default_user"):
     """Get and refresh Gmail credentials if needed"""
@@ -314,7 +315,7 @@ async def root():
 async def gmail_login(user_id: str = "default_user"):
     """Initiate Gmail OAuth flow"""
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
-        raise HTTPException(status_code=500, detail="Gmail OAuth not configured. Please add GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET to .env")
+        raise HTTPException(status_code=500, detail="Gmail OAuth not configured")
     
     flow = Flow.from_client_config({
         "web": {
@@ -331,24 +332,32 @@ async def gmail_login(user_id: str = "default_user"):
         include_granted_scopes='true'
     )
     
-    await save_state(state, user_id)
+    # Save state and flow session data
+    flow_data = {
+        "client_id": GOOGLE_CLIENT_ID,
+        "client_secret": GOOGLE_CLIENT_SECRET,
+        "redirect_uri": REDIRECT_URI
+    }
+    await save_state(state, user_id, flow_data)
     return RedirectResponse(url)
 
 @api_router.get("/oauth/gmail/callback")
 async def gmail_callback(code: str, state: str):
     """Handle Gmail OAuth callback"""
     try:
-        user_id = await verify_state(state)
+        user_id, flow_data = await get_and_delete_state(state)
         
+        # Recreate flow with saved data
         flow = Flow.from_client_config({
             "web": {
-                "client_id": GOOGLE_CLIENT_ID,
-                "client_secret": GOOGLE_CLIENT_SECRET,
+                "client_id": flow_data["client_id"],
+                "client_secret": flow_data["client_secret"],
                 "auth_uri": "https://accounts.google.com/o/oauth2/auth",
                 "token_uri": "https://oauth2.googleapis.com/token"
             }
-        }, scopes=SCOPES, redirect_uri=REDIRECT_URI, state=state)
+        }, scopes=SCOPES, redirect_uri=flow_data["redirect_uri"], state=state)
         
+        # Exchange code for tokens
         with warnings.catch_warnings():
             warnings.simplefilter("ignore")
             flow.fetch_token(code=code)
@@ -372,10 +381,11 @@ async def gmail_callback(code: str, state: str):
             upsert=True
         )
         
+        logger.info(f"Gmail OAuth successful for user: {user_id}")
         return RedirectResponse("/")
     except Exception as e:
         logger.error(f"OAuth callback error: {e}")
-        return RedirectResponse(f"/?error=oauth_failed")
+        return RedirectResponse(f"/?error=oauth_failed&message={str(e)}")
 
 @api_router.get("/workflow/status", response_model=WorkflowStatus)
 async def get_workflow_status():
