@@ -11,8 +11,12 @@ import {
   Clock, 
   AlertTriangle,
   RefreshCw,
-  Link as LinkIcon
+  Link as LinkIcon,
+  Settings as SettingsIcon,
+  LogOut,
+  Download
 } from "lucide-react";
+import Settings from "@/components/Settings";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -31,6 +35,7 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('emails');
   const [runningWorkflow, setRunningWorkflow] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
   // Fetch workflow status
   const fetchWorkflowStatus = async () => {
@@ -92,6 +97,26 @@ function App() {
     } finally {
       setRunningWorkflow(false);
     }
+  };
+
+  // Logout
+  const handleLogout = async () => {
+    if (!window.confirm("Disconnect Gmail account? You'll need to reconnect to process emails.")) {
+      return;
+    }
+    try {
+      await axios.post(`${API}/auth/logout?user_id=default_user`);
+      alert("✓ Gmail disconnected successfully");
+      await fetchWorkflowStatus();
+    } catch (error) {
+      console.error("Error logging out:", error);
+      alert("✗ Failed to disconnect Gmail");
+    }
+  };
+
+  // Export CSV
+  const handleExport = () => {
+    window.open(`${API}/emails/export`, '_blank');
   };
 
   // Connect Gmail
@@ -183,6 +208,50 @@ function App() {
               Error Logs
             </button>
           </nav>
+
+          {/* Settings & Logout */}
+          {workflowStatus.is_authenticated && (
+            <div style={{ marginTop: 'auto', paddingTop: '2rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              <button
+                data-testid="nav-settings-btn"
+                onClick={() => setShowSettings(true)}
+                style={{
+                  textAlign: 'left',
+                  padding: '0.75rem 1rem',
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: '2px',
+                  cursor: 'pointer',
+                  color: '#525252',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <SettingsIcon size={18} />
+                Settings
+              </button>
+              <button
+                data-testid="logout-btn"
+                onClick={handleLogout}
+                style={{
+                  textAlign: 'left',
+                  padding: '0.75rem 1rem',
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: '2px',
+                  cursor: 'pointer',
+                  color: '#E53935',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem'
+                }}
+              >
+                <LogOut size={18} />
+                Disconnect
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -199,7 +268,7 @@ function App() {
                 AI-powered email workflow automation
               </p>
             </div>
-            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+            <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', flexWrap: 'wrap' }}>
               <button
                 data-testid="refresh-btn"
                 onClick={refreshData}
@@ -213,6 +282,21 @@ function App() {
                 <RefreshCw size={16} style={{ display: 'inline', marginRight: '0.5rem' }} />
                 {loading ? 'Loading...' : 'Refresh'}
               </button>
+              {workflowStatus.is_authenticated && workflowStatus.total_processed > 0 && (
+                <button
+                  data-testid="export-btn"
+                  onClick={handleExport}
+                  className="btn-secondary"
+                  style={{
+                    backgroundColor: '#002FA7',
+                    color: 'white',
+                    borderColor: '#002FA7'
+                  }}
+                >
+                  <Download size={16} style={{ display: 'inline', marginRight: '0.5rem' }} />
+                  Export CSV
+                </button>
+              )}
               {workflowStatus.is_authenticated && (
                 <button
                   data-testid="run-now-btn"
@@ -460,6 +544,13 @@ function App() {
           </div>
         )}
       </div>
+
+      {/* Settings Modal */}
+      <Settings 
+        isOpen={showSettings} 
+        onClose={() => setShowSettings(false)}
+        onSave={refreshData}
+      />
     </div>
   );
 }

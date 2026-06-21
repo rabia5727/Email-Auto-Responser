@@ -90,6 +90,18 @@ class WorkflowConfig(BaseModel):
     model_config = ConfigDict(extra="ignore")
     enabled: bool = False
     last_run: Optional[datetime]
+    processing_limit: int = 5
+    auto_send_drafts: bool = False
+    custom_prompt: str = "You are a professional email assistant. Reply to emails in a helpful, professional, and concise manner."
+    sender_whitelist: List[str] = []
+    sender_blacklist: List[str] = []
+
+class WorkflowSettings(BaseModel):
+    processing_limit: int = 5
+    auto_send_drafts: bool = False
+    custom_prompt: str = "You are a professional email assistant. Reply to emails in a helpful, professional, and concise manner."
+    sender_whitelist: List[str] = []
+    sender_blacklist: List[str] = []
 
 class WorkflowStatus(BaseModel):
     enabled: bool
@@ -175,13 +187,15 @@ def decode_email_body(payload):
     
     return body[:1000]  # Limit to first 1000 chars
 
-async def generate_ai_reply(from_email: str, subject: str, body: str) -> str:
+async def generate_ai_reply(from_email: str, subject: str, body: str, custom_prompt: str = None) -> str:
     """Generate AI reply using OpenAI via emergentintegrations"""
     try:
+        system_prompt = custom_prompt or "You are a professional email assistant. Reply to emails in a helpful, professional, and concise manner."
+        
         chat = LlmChat(
             api_key=EMERGENT_LLM_KEY,
             session_id=str(uuid.uuid4()),
-            system_message="You are a professional email assistant. Reply to emails in a helpful, professional, and concise manner."
+            system_message=system_prompt
         ).with_model("openai", "gpt-5.4-mini")
         
         user_prompt = f"Read this email and draft a reply. Email from: {from_email} Subject: {subject} Body: {body}"
@@ -206,6 +220,14 @@ async def process_email_workflow():
             logger.warning("No Gmail credentials found. Skipping workflow.")
             return
         
+        # Get workflow configuration
+        config = await db.workflow_config.find_one({})
+        processing_limit = config.get('processing_limit', 5) if config else 5
+        auto_send = config.get('auto_send_drafts', False) if config else False
+        custom_prompt = config.get('custom_prompt') if config else None
+        whitelist = config.get('sender_whitelist', []) if config else []
+        blacklist = config.get('sender_blacklist', []) if config else []
+        
         # Build Gmail service
         service = build('gmail', 'v1', credentials=creds)
         
@@ -213,7 +235,7 @@ async def process_email_workflow():
         results = service.users().messages().list(
             userId='me',
             q='label:UNREAD',
-            maxResults=5
+            maxResults=processing_limit
         ).execute()
         
         messages = results.get('messages', [])
@@ -233,11 +255,27 @@ async def process_email_workflow():
                 from_email = next((h['value'] for h in headers if h['name'] == 'From'), 'Unknown')
                 subject = next((h['value'] for h in headers if h['name'] == 'Subject'), 'No Subject')
                 
+                # Extract email address from "Name <email@example.com>" format
+                import re
+                email_match = re.search(r'<(.+?)>|^(.+?)$', from_email)
+                sender_email = email_match.group(1) or email_match.group(2) if email_match else from_email
+                sender_email = sender_email.strip()
+                
+                # Apply whitelist filter
+                if whitelist and sender_email not in whitelist:
+                    logger.info(f"Skipping email from {sender_email} - not in whitelist")
+                    continue
+                
+                # Apply blacklist filter
+                if blacklist and sender_email in blacklist:
+                    logger.info(f"Skipping email from {sender_email} - in blacklist")
+                    continue
+                
                 # Decode body
                 body = decode_email_body(full_msg['payload'])
                 
                 # Generate AI reply
-                ai_reply = await generate_ai_reply(from_email, subject, body)
+                ai_reply = await generate_ai_reply(from_email, subject, body, custom_prompt)
                 
                 # Create draft
                 draft_body = {
@@ -253,6 +291,15 @@ async def process_email_workflow():
                     body=draft_body
                 ).execute()
                 
+                # Auto-send if enabled
+                draft_id = draft['id']
+                if auto_send:
+                    service.users().drafts().send(
+                        userId='me',
+                        body={'id': draft_id}
+                    ).execute()
+                    logger.info(f"Auto-sent draft for email: {subject}")
+                
                 # Mark as READ
                 service.users().messages().modify(
                     userId='me',
@@ -267,7 +314,7 @@ async def process_email_workflow():
                     subject=subject,
                     body=body,
                     ai_reply=ai_reply,
-                    draft_id=draft['id'],
+                    draft_id=draft_id,
                     status="success"
                 )
                 
@@ -474,6 +521,75 @@ async def get_processed_emails(limit: int = 50):
             email['processed_at'] = datetime.fromisoformat(email['processed_at'])
     
     return emails
+
+@api_router.get("/emails/export")
+async def export_processed_emails():
+    """Export processed emails as CSV"""
+    from fastapi.responses import StreamingResponse
+    import io
+    import csv
+    
+    emails = await db.processed_emails.find({}, {"_id": 0}).sort("processed_at", -1).to_list(1000)
+    
+    # Create CSV in memory
+    output = io.StringIO()
+    writer = csv.writer(output)
+    
+    # Write header
+    writer.writerow(['Timestamp', 'From', 'Subject', 'Original Body', 'AI Reply', 'Draft ID', 'Status'])
+    
+    # Write data
+    for email in emails:
+        writer.writerow([
+            email.get('processed_at', ''),
+            email.get('from_email', ''),
+            email.get('subject', ''),
+            email.get('body', ''),
+            email.get('ai_reply', ''),
+            email.get('draft_id', ''),
+            email.get('status', '')
+        ])
+    
+    output.seek(0)
+    
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type="text/csv",
+        headers={"Content-Disposition": "attachment; filename=processed_emails.csv"}
+    )
+
+@api_router.get("/settings")
+async def get_settings():
+    """Get workflow settings"""
+    config = await db.workflow_config.find_one({})
+    if not config:
+        return WorkflowSettings().model_dump()
+    
+    return {
+        "processing_limit": config.get('processing_limit', 5),
+        "auto_send_drafts": config.get('auto_send_drafts', False),
+        "custom_prompt": config.get('custom_prompt', "You are a professional email assistant. Reply to emails in a helpful, professional, and concise manner."),
+        "sender_whitelist": config.get('sender_whitelist', []),
+        "sender_blacklist": config.get('sender_blacklist', [])
+    }
+
+@api_router.post("/settings")
+async def update_settings(settings: WorkflowSettings):
+    """Update workflow settings"""
+    await db.workflow_config.update_one(
+        {},
+        {"$set": settings.model_dump()},
+        upsert=True
+    )
+    return {"message": "Settings updated successfully"}
+
+@api_router.post("/auth/logout")
+async def logout(user_id: str = "default_user"):
+    """Logout and disconnect Gmail"""
+    result = await db.gmail_tokens.delete_one({"user_id": user_id})
+    if result.deleted_count > 0:
+        return {"message": "Successfully disconnected Gmail", "success": True}
+    return {"message": "No connection found", "success": False}
 
 @api_router.get("/errors")
 async def get_errors(limit: int = 50):
