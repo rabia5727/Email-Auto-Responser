@@ -2,7 +2,7 @@ import { useState } from "react";
 import { X, LogOut, AlertTriangle } from "lucide-react";
 
 export default function LogoutConfirmation({ isOpen, onClose, onConfirm }) {
-  const [clearData, setClearData] = useState(true);
+  const [clearData, setClearData] = useState(false);  // Changed to false - don't clear by default
 
   if (!isOpen) return null;
 
@@ -81,15 +81,15 @@ export default function LogoutConfirmation({ isOpen, onClose, onConfirm }) {
             />
             <div>
               <span style={{ fontWeight: 600, display: 'block', marginBottom: '0.25rem' }}>
-                Clear all data (Recommended)
+                Also delete all my data
               </span>
               <span style={{ fontSize: '0.875rem', color: '#525252' }}>
-                Remove all processed emails, error logs, and workflow settings. Start fresh with a clean slate.
+                Permanently remove all processed emails, error logs, and settings. Otherwise, your data will be preserved and restored when you reconnect.
               </span>
             </div>
           </label>
 
-          {!clearData && (
+          {clearData && (
             <div style={{
               marginTop: '0.75rem',
               marginLeft: '2rem',
@@ -99,7 +99,21 @@ export default function LogoutConfirmation({ isOpen, onClose, onConfirm }) {
               fontSize: '0.875rem',
               color: '#7F1D1D'
             }}>
-              <strong>Warning:</strong> Old data will remain visible. This may cause confusion if connecting a different account.
+              <strong>Warning:</strong> All your data will be permanently deleted. This cannot be undone!
+            </div>
+          )}
+
+          {!clearData && (
+            <div style={{
+              marginTop: '0.75rem',
+              marginLeft: '2rem',
+              padding: '0.75rem',
+              backgroundColor: '#D1FAE5',
+              borderRadius: '4px',
+              fontSize: '0.875rem',
+              color: '#065F46'
+            }}>
+              ✓ Your data will be saved. When you reconnect with the same account, all your processed emails and settings will be restored.
             </div>
           )}
         </div>

@@ -135,6 +135,13 @@ async def get_and_delete_state(state: str) -> tuple:
     await db.oauth_states.delete_one({"state": state})
     return doc["user_id"], doc.get("flow_data", {})
 
+async def get_current_user_email(user_id: str = "default_user") -> Optional[str]:
+    """Get the currently authenticated user's email"""
+    token_doc = await db.gmail_tokens.find_one({"user_id": user_id})
+    if token_doc:
+        return token_doc.get("user_email")
+    return None
+
 async def get_credentials(user_id: str = "default_user"):
     """Get and refresh Gmail credentials if needed"""
     token_doc = await db.gmail_tokens.find_one({"user_id": user_id})
@@ -221,8 +228,14 @@ async def process_email_workflow():
             logger.warning("No Gmail credentials found. Skipping workflow.")
             return
         
-        # Get workflow configuration
-        config = await db.workflow_config.find_one({})
+        # Get current user email
+        user_email = await get_current_user_email()
+        if not user_email:
+            logger.warning("No user email found. Skipping workflow.")
+            return
+        
+        # Get workflow configuration for this user
+        config = await db.workflow_config.find_one({"user_email": user_email})
         processing_limit = config.get('processing_limit', 5) if config else 5
         auto_send = config.get('auto_send_drafts', False) if config else False
         custom_prompt = config.get('custom_prompt') if config else None
@@ -316,6 +329,7 @@ async def process_email_workflow():
                 
                 # Save to database
                 processed_email = ProcessedEmail(
+                    user_email=user_email,
                     email_id=msg['id'],
                     from_email=from_email,
                     subject=subject,
@@ -336,6 +350,7 @@ async def process_email_workflow():
                 
                 # Log error
                 error_log = ErrorLog(
+                    user_email=user_email,
                     email_id=msg['id'],
                     error_message=str(e),
                     error_type="processing_error"
@@ -344,24 +359,28 @@ async def process_email_workflow():
                 error_doc['timestamp'] = error_doc['timestamp'].isoformat()
                 await db.error_logs.insert_one(error_doc)
         
-        # Update last run
+        # Update last run for this user
         await db.workflow_config.update_one(
-            {},
+            {"user_email": user_email},
             {"$set": {"last_run": datetime.now(timezone.utc).isoformat()}},
             upsert=True
         )
         
     except Exception as e:
         logger.error(f"Workflow error: {e}")
-        # Log error
-        error_log = ErrorLog(
-            email_id=None,
-            error_message=str(e),
-            error_type="workflow_error"
-        )
-        error_doc = error_log.model_dump()
-        error_doc['timestamp'] = error_doc['timestamp'].isoformat()
-        await db.error_logs.insert_one(error_doc)
+        # Get user email for error logging
+        user_email = await get_current_user_email()
+        if user_email:
+            # Log error
+            error_log = ErrorLog(
+                user_email=user_email,
+                email_id=None,
+                error_message=str(e),
+                error_type="workflow_error"
+            )
+            error_doc = error_log.model_dump()
+            error_doc['timestamp'] = error_doc['timestamp'].isoformat()
+            await db.error_logs.insert_one(error_doc)
 
 # Routes
 @api_router.get("/")
@@ -429,9 +448,18 @@ async def gmail_callback(code: str, state: str):
         
         tokens = response.json()
         
-        # Save tokens to database
+        # Get user's Gmail email address
+        user_info_response = requests.get(
+            'https://www.googleapis.com/oauth2/v2/userinfo',
+            headers={'Authorization': f'Bearer {tokens["access_token"]}'}
+        )
+        user_info = user_info_response.json()
+        user_email = user_info.get('email', 'unknown@gmail.com')
+        
+        # Save tokens to database with user email
         token_doc = {
             "user_id": user_id,
+            "user_email": user_email,
             "access_token": tokens['access_token'],
             "refresh_token": tokens.get('refresh_token'),
             "expires_at": (datetime.now(timezone.utc) + timedelta(seconds=tokens.get('expires_in', 3600))).isoformat(),
@@ -446,7 +474,7 @@ async def gmail_callback(code: str, state: str):
             upsert=True
         )
         
-        logger.info(f"Gmail OAuth successful for user: {user_id}")
+        logger.info(f"Gmail OAuth successful for user: {user_email}")
         return RedirectResponse("/")
     except Exception as e:
         logger.error(f"OAuth callback error: {e}")
@@ -455,15 +483,19 @@ async def gmail_callback(code: str, state: str):
 @api_router.get("/workflow/status", response_model=WorkflowStatus)
 async def get_workflow_status():
     """Get workflow status"""
-    config = await db.workflow_config.find_one({})
+    # Check authentication and get user email
+    user_email = await get_current_user_email()
+    is_authenticated = user_email is not None
     
-    # Check authentication
-    token = await db.gmail_tokens.find_one({"user_id": "default_user"})
-    is_authenticated = token is not None
-    
-    # Count processed emails and errors
-    total_processed = await db.processed_emails.count_documents({})
-    total_errors = await db.error_logs.count_documents({})
+    # Count processed emails and errors for current user
+    if is_authenticated:
+        total_processed = await db.processed_emails.count_documents({"user_email": user_email})
+        total_errors = await db.error_logs.count_documents({"user_email": user_email})
+        config = await db.workflow_config.find_one({"user_email": user_email})
+    else:
+        total_processed = 0
+        total_errors = 0
+        config = None
     
     last_run = None
     enabled = False
@@ -523,8 +555,18 @@ async def get_processed_emails(
     skip: int = 0,
     days: int = None  # Filter by last N days
 ):
-    """Get processed emails with pagination and filters"""
-    query = {}
+    """Get processed emails with pagination and filters (user-specific)"""
+    # Get current user email
+    user_email = await get_current_user_email()
+    if not user_email:
+        return {
+            "emails": [],
+            "total": 0,
+            "skip": 0,
+            "limit": limit
+        }
+    
+    query = {"user_email": user_email}
     
     # Add date filter if specified
     if days:
@@ -624,8 +666,12 @@ async def export_processed_emails():
 
 @api_router.get("/settings")
 async def get_settings():
-    """Get workflow settings"""
-    config = await db.workflow_config.find_one({})
+    """Get workflow settings (user-specific)"""
+    user_email = await get_current_user_email()
+    if not user_email:
+        return WorkflowSettings().model_dump()
+    
+    config = await db.workflow_config.find_one({"user_email": user_email})
     if not config:
         return WorkflowSettings().model_dump()
     
@@ -640,10 +686,17 @@ async def get_settings():
 
 @api_router.post("/settings")
 async def update_settings(settings: WorkflowSettings):
-    """Update workflow settings"""
+    """Update workflow settings (user-specific)"""
+    user_email = await get_current_user_email()
+    if not user_email:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    
+    settings_dict = settings.model_dump()
+    settings_dict['user_email'] = user_email
+    
     await db.workflow_config.update_one(
-        {},
-        {"$set": settings.model_dump()},
+        {"user_email": user_email},
+        {"$set": settings_dict},
         upsert=True
     )
     return {"message": "Settings updated successfully"}
@@ -675,36 +728,36 @@ async def clear_all_data():
         raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.post("/auth/logout")
-async def logout(user_id: str = "default_user", clear_data: bool = True):
-    """Logout and disconnect Gmail, optionally clear all data"""
+async def logout(user_id: str = "default_user", clear_data: bool = False):
+    """Logout and disconnect Gmail, optionally clear user's data"""
     try:
+        # Get user email before deleting token
+        user_email = await get_current_user_email(user_id)
+        
         # Delete Gmail tokens
         token_result = await db.gmail_tokens.delete_one({"user_id": user_id})
         
-        if clear_data:
-            # Clear all processed emails
-            await db.processed_emails.delete_many({})
+        if clear_data and user_email:
+            # Clear ONLY this user's data
+            emails_result = await db.processed_emails.delete_many({"user_email": user_email})
+            errors_result = await db.error_logs.delete_many({"user_email": user_email})
+            config_result = await db.workflow_config.delete_many({"user_email": user_email})
             
-            # Clear all error logs
-            await db.error_logs.delete_many({})
-            
-            # Clear workflow config
-            await db.workflow_config.delete_many({})
-            
-            # Clear OAuth states
-            await db.oauth_states.delete_many({})
-            
-            logger.info(f"Cleared all data for user: {user_id}")
+            logger.info(f"Cleared all data for user: {user_email}")
             
             return {
-                "message": "Successfully disconnected Gmail and cleared all data",
+                "message": f"Disconnected {user_email} and cleared all data",
                 "success": True,
-                "data_cleared": True
+                "data_cleared": True,
+                "deleted": {
+                    "emails": emails_result.deleted_count,
+                    "errors": errors_result.deleted_count
+                }
             }
         
         if token_result.deleted_count > 0:
             return {
-                "message": "Successfully disconnected Gmail (data preserved)",
+                "message": f"Disconnected Gmail (data preserved for {user_email})",
                 "success": True,
                 "data_cleared": False
             }
@@ -720,8 +773,18 @@ async def logout(user_id: str = "default_user", clear_data: bool = True):
 
 @api_router.get("/errors")
 async def get_errors(limit: int = 20, skip: int = 0, days: int = None):
-    """Get error logs with pagination"""
-    query = {}
+    """Get error logs with pagination (user-specific)"""
+    # Get current user email
+    user_email = await get_current_user_email()
+    if not user_email:
+        return {
+            "errors": [],
+            "total": 0,
+            "skip": 0,
+            "limit": limit
+        }
+    
+    query = {"user_email": user_email}
     
     if days:
         cutoff_date = datetime.now(timezone.utc) - timedelta(days=days)
