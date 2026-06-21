@@ -347,29 +347,30 @@ async def gmail_callback(code: str, state: str):
     try:
         user_id, flow_data = await get_and_delete_state(state)
         
-        # Recreate flow with saved data
-        flow = Flow.from_client_config({
-            "web": {
-                "client_id": flow_data["client_id"],
-                "client_secret": flow_data["client_secret"],
-                "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-                "token_uri": "https://oauth2.googleapis.com/token"
-            }
-        }, scopes=SCOPES, redirect_uri=flow_data["redirect_uri"], state=state)
+        # Use requests directly to exchange code for token (bypass Flow issues)
+        import requests
         
-        # Exchange code for tokens
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            flow.fetch_token(code=code)
+        token_data = {
+            'code': code,
+            'client_id': GOOGLE_CLIENT_ID,
+            'client_secret': GOOGLE_CLIENT_SECRET,
+            'redirect_uri': REDIRECT_URI,
+            'grant_type': 'authorization_code'
+        }
         
-        creds = flow.credentials
+        response = requests.post('https://oauth2.googleapis.com/token', data=token_data)
+        
+        if response.status_code != 200:
+            raise Exception(f"Token exchange failed: {response.text}")
+        
+        tokens = response.json()
         
         # Save tokens to database
-        token_data = {
+        token_doc = {
             "user_id": user_id,
-            "access_token": creds.token,
-            "refresh_token": creds.refresh_token,
-            "expires_at": (datetime.now(timezone.utc) + timedelta(seconds=3600)).isoformat(),
+            "access_token": tokens['access_token'],
+            "refresh_token": tokens.get('refresh_token'),
+            "expires_at": (datetime.now(timezone.utc) + timedelta(seconds=tokens.get('expires_in', 3600))).isoformat(),
             "client_id": GOOGLE_CLIENT_ID,
             "client_secret": GOOGLE_CLIENT_SECRET,
             "token_uri": "https://oauth2.googleapis.com/token"
@@ -377,7 +378,7 @@ async def gmail_callback(code: str, state: str):
         
         await db.gmail_tokens.update_one(
             {"user_id": user_id},
-            {"$set": token_data},
+            {"$set": token_doc},
             upsert=True
         )
         
