@@ -10,7 +10,6 @@ from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 import uuid
 from datetime import datetime, timezone, timedelta
-from google_auth_oauthlib.flow import Flow
 from googleapiclient.discovery import build
 from google.oauth2.credentials import Credentials
 from google.auth.transport.requests import Request as GoogleRequest
@@ -20,6 +19,9 @@ from apscheduler.triggers.interval import IntervalTrigger
 import base64
 import email
 from emergentintegrations.llm.chat import LlmChat, UserMessage
+from authlib.integrations.starlette_client import OAuth
+from authlib.common.security import generate_token
+import secrets
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
@@ -313,33 +315,39 @@ async def root():
 
 @api_router.get("/oauth/gmail/login")
 async def gmail_login(user_id: str = "default_user"):
-    """Initiate Gmail OAuth flow"""
+    """Initiate Gmail OAuth flow with PKCE"""
     if not GOOGLE_CLIENT_ID or not GOOGLE_CLIENT_SECRET:
         raise HTTPException(status_code=500, detail="Gmail OAuth not configured")
     
-    flow = Flow.from_client_config({
-        "web": {
-            "client_id": GOOGLE_CLIENT_ID,
-            "client_secret": GOOGLE_CLIENT_SECRET,
-            "auth_uri": "https://accounts.google.com/o/oauth2/auth",
-            "token_uri": "https://oauth2.googleapis.com/token"
-        }
-    }, scopes=SCOPES, redirect_uri=REDIRECT_URI)
+    # Generate PKCE code verifier and challenge
+    code_verifier = base64.urlsafe_b64encode(secrets.token_bytes(32)).decode('utf-8').rstrip('=')
     
-    url, state = flow.authorization_url(
-        access_type='offline',
-        prompt='consent',
-        include_granted_scopes='true'
-    )
+    # Build authorization URL with PKCE
+    import urllib.parse
+    params = {
+        'client_id': GOOGLE_CLIENT_ID,
+        'redirect_uri': REDIRECT_URI,
+        'response_type': 'code',
+        'scope': ' '.join(SCOPES),
+        'access_type': 'offline',
+        'prompt': 'consent',
+        'state': generate_token(32),
+        'code_challenge': code_verifier,
+        'code_challenge_method': 'plain'
+    }
     
-    # Save state and flow session data
+    auth_url = 'https://accounts.google.com/o/oauth2/v2/auth?' + urllib.parse.urlencode(params)
+    
+    # Save state and code verifier
     flow_data = {
         "client_id": GOOGLE_CLIENT_ID,
         "client_secret": GOOGLE_CLIENT_SECRET,
-        "redirect_uri": REDIRECT_URI
+        "redirect_uri": REDIRECT_URI,
+        "code_verifier": code_verifier
     }
-    await save_state(state, user_id, flow_data)
-    return RedirectResponse(url)
+    await save_state(params['state'], user_id, flow_data)
+    
+    return RedirectResponse(auth_url)
 
 @api_router.get("/oauth/gmail/callback")
 async def gmail_callback(code: str, state: str):
@@ -347,7 +355,7 @@ async def gmail_callback(code: str, state: str):
     try:
         user_id, flow_data = await get_and_delete_state(state)
         
-        # Use requests directly to exchange code for token (bypass Flow issues)
+        # Exchange code for tokens with PKCE
         import requests
         
         token_data = {
@@ -355,7 +363,8 @@ async def gmail_callback(code: str, state: str):
             'client_id': GOOGLE_CLIENT_ID,
             'client_secret': GOOGLE_CLIENT_SECRET,
             'redirect_uri': REDIRECT_URI,
-            'grant_type': 'authorization_code'
+            'grant_type': 'authorization_code',
+            'code_verifier': flow_data['code_verifier']
         }
         
         response = requests.post('https://oauth2.googleapis.com/token', data=token_data)
@@ -386,7 +395,7 @@ async def gmail_callback(code: str, state: str):
         return RedirectResponse("/")
     except Exception as e:
         logger.error(f"OAuth callback error: {e}")
-        return RedirectResponse(f"/?error=oauth_failed&message={str(e)}")
+        return RedirectResponse(f"/?error=oauth_failed")
 
 @api_router.get("/workflow/status", response_model=WorkflowStatus)
 async def get_workflow_status():
