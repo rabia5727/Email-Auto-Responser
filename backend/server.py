@@ -648,6 +648,32 @@ async def update_settings(settings: WorkflowSettings):
     )
     return {"message": "Settings updated successfully"}
 
+@api_router.delete("/data/clear-all")
+async def clear_all_data():
+    """Clear all data from database (useful for reset/cleanup)"""
+    try:
+        # Clear all collections
+        emails_deleted = await db.processed_emails.delete_many({})
+        errors_deleted = await db.error_logs.delete_many({})
+        config_deleted = await db.workflow_config.delete_many({})
+        states_deleted = await db.oauth_states.delete_many({})
+        
+        logger.info("Cleared all data from database")
+        
+        return {
+            "message": "All data cleared successfully",
+            "success": True,
+            "deleted": {
+                "emails": emails_deleted.deleted_count,
+                "errors": errors_deleted.deleted_count,
+                "configs": config_deleted.deleted_count,
+                "states": states_deleted.deleted_count
+            }
+        }
+    except Exception as e:
+        logger.error(f"Clear all data error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
 @api_router.post("/auth/logout")
 async def logout(user_id: str = "default_user", clear_data: bool = True):
     """Logout and disconnect Gmail, optionally clear all data"""

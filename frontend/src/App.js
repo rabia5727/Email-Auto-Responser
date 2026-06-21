@@ -193,6 +193,48 @@ function App() {
     }
   };
 
+  // Clear all data (reset everything)
+  const clearAllData = async () => {
+    if (!window.confirm(
+      "⚠️ CLEAR ALL DATA?\n\n" +
+      "This will permanently delete:\n" +
+      "• All processed emails (" + emailsTotal + ")\n" +
+      "• All error logs (" + errorsTotal + ")\n" +
+      "• All workflow settings\n\n" +
+      "This action CANNOT be undone!\n\n" +
+      "Continue?"
+    )) {
+      return;
+    }
+    
+    try {
+      setLoading(true);
+      const response = await axios.delete(`${API}/data/clear-all`);
+      
+      // Clear local state
+      setProcessedEmails([]);
+      setEmailsTotal(0);
+      setEmailsPage(0);
+      setErrors([]);
+      setErrorsTotal(0);
+      setErrorsPage(0);
+      setSelectedEmail(null);
+      
+      // Refresh workflow status
+      await fetchWorkflowStatus();
+      
+      alert(`✓ ${response.data.message}\n\nDeleted:\n• ${response.data.deleted.emails} emails\n• ${response.data.deleted.errors} errors`);
+      
+      // Navigate to dashboard
+      setActiveTab('dashboard');
+    } catch (error) {
+      console.error("Error clearing all data:", error);
+      alert("✗ Failed to clear data");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     refreshData();
     
@@ -332,6 +374,32 @@ function App() {
               >
                 <LogOut size={18} />
                 Disconnect
+              </button>
+            </div>
+          )}
+
+          {/* Clear Data (always visible) */}
+          {!workflowStatus.is_authenticated && (emailsTotal > 0 || errorsTotal > 0) && (
+            <div style={{ marginTop: 'auto', paddingTop: '2rem' }}>
+              <button
+                data-testid="clear-all-data-btn"
+                onClick={clearAllData}
+                style={{
+                  textAlign: 'left',
+                  padding: '0.75rem 1rem',
+                  background: 'transparent',
+                  border: 'none',
+                  borderRadius: '2px',
+                  cursor: 'pointer',
+                  color: '#E53935',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.5rem',
+                  fontSize: '0.875rem'
+                }}
+              >
+                <XCircle size={18} />
+                Clear All Data
               </button>
             </div>
           )}
