@@ -1,0 +1,74 @@
+{
+  "theme": "light",
+  "archetype": "4 (Swiss & High-Contrast)",
+  "typography": {
+    "headings": "Cabinet Grotesk, sans-serif",
+    "body": "IBM Plex Sans, sans-serif",
+    "mono": "JetBrains Mono, monospace",
+    "rules": [
+      "No Inter or generic sans for headings. Use Cabinet Grotesk for a bold, structural feel.",
+      "Tight letter spacing on headings (tracking-tight).",
+      "Overlines must be Uppercase, tiny, and wide spacing (tracking-[0.2em]).",
+      "Use JetBrains Mono for logs, code snippets, and raw email data."
+    ]
+  },
+  "colors": {
+    "background": "#FAFAFA",
+    "surface": "#FFFFFF",
+    "border": "#E5E5E5",
+    "text": {
+      "primary": "#0A0A0A",
+      "muted": "#525252"
+    },
+    "accents": {
+      "primary": "#002FA7",
+      "error": "#E53935",
+      "warning": "#FFC107",
+      "success": "#059669"
+    }
+  },
+  "layout": {
+    "strategy": "Mode B: The 'Control Room' Grid",
+    "grid_structure": "grid-cols-1 md:grid-cols-3 lg:grid-cols-4 with tight gaps (gap-4 or gap-6).",
+    "metrics_focus": "Top-left quadrant for main 'North Star' status/metrics.",
+    "spacing": "Generous internal padding in containers (p-6 or p-8) to prevent text collision. Use optical alignment."
+  },
+  "components": {
+    "strategy": "Shadcn UI, highly customized. Flat solid surfaces, NO glassmorphism.",
+    "borders": "Grid Borders (The 'Technical' Look). 1px crisp borders. Container border-collapse.",
+    "shadows": "None by default. Soft ambient shadow-sm on hover.",
+    "icons": "lucide-react (Dense and precise)",
+    "rules": [
+      "Never use full-screen gradients. Texture over gloss.",
+      "Card components must be flat, rectangular, dense styles. Reduce border radius to rounded-sm or rounded-none.",
+      "All interactive elements MUST include data-testid attribute (e.g., data-testid='start-workflow-btn').",
+      "Hover states must explicitly set text color (e.g., hover:bg-slate-900 hover:text-white).",
+      "Do NOT use HTML-based components for advanced interactions. Use Shadcn variants.",
+      "Ensure text contrast meets APCA/WCAG standards."
+    ]
+  },
+  "media": {
+    "images": {
+      "company_logo": {
+        "url": "https://images.unsplash.com/photo-1597979732130-9d2ad18df38b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2ODl8MHwxfHNlYXJjaHwxfHxjb21wYW55JTIwbG9nbyUyMGJsYWNrJTIwYW5kJTIwd2hpdGUlMjBtaW5pbWFsfGVufDB8fHx8MTc4MjAzMDg1Mnww&ixlib=rb-4.1.0&q=85",
+        "description": "Minimalist black and white company logo."
+      },
+      "user_avatar": {
+        "url": "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NTY2NzB8MHwxfHNlYXJjaHwyfHxwcm9mZXNzaW9uYWwlMjBoZWFkc2hvdCUyMHBvcnRyYWl0fGVufDB8fHx8MTc4MjAzMDg1Mnww&ixlib=rb-4.1.0&q=85",
+        "description": "Professional headshot portrait."
+      }
+    }
+  },
+  "instructions_to_main_agent": [
+    "Use standard Javascript/JSX (.js/.jsx), NO TypeScript (.tsx).",
+    "Install and configure 'Cabinet Grotesk', 'IBM Plex Sans', and 'JetBrains Mono' via Google Fonts/Fontshare.",
+    "Install 'lucide-react' for icons.",
+    "Implement real-time status updates for the email processing workflow. If backend isn't ready, MUST implement a robust mocked interval flow.",
+    "Design the dashboard with a Sidebar for navigation and a main 'Control Room' grid for the email workflow.",
+    "Top cards should display metrics: Total Processed, Unread Queue, Errors.",
+    "Main view should be a split layout or use tabs: 'Processed Emails' (List) and 'AI Draft Preview' (Detail).",
+    "Ensure error logs are in a technical, monospace format (JetBrains Mono) with Signal Red (#E53935) indicators.",
+    "All components must be fully accessible. Check contrast, focus states, and aria labels.",
+    "Add 'data-testid' to EVERY button, link, and major UI component using kebab-case role-based naming (e.g., 'workflow-toggle-button')."
+  ]
+}
