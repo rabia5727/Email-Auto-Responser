@@ -189,7 +189,8 @@ async def generate_ai_reply(from_email: str, subject: str, body: str) -> str:
         
         # Use send_message for non-streaming response
         response = await chat.send_message(user_message)
-        return response.message
+        # Response is already a string
+        return response if isinstance(response, str) else str(response)
     except Exception as e:
         logger.error(f"AI generation failed: {e}")
         raise

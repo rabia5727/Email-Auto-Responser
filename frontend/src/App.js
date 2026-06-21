@@ -30,6 +30,7 @@ function App() {
   const [selectedEmail, setSelectedEmail] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('emails');
+  const [runningWorkflow, setRunningWorkflow] = useState(false);
 
   // Fetch workflow status
   const fetchWorkflowStatus = async () => {
@@ -75,17 +76,21 @@ function App() {
 
   // Trigger workflow manually
   const triggerWorkflowNow = async () => {
+    setRunningWorkflow(true);
     try {
-      setLoading(true);
       const response = await axios.post(`${API}/workflow/trigger`);
-      alert(response.data.message);
+      if (response.data.success) {
+        alert('✓ Workflow completed! Check processed emails below.');
+      } else {
+        alert('⚠️ Workflow completed with errors. Check Error Logs tab.');
+      }
       // Refresh data after trigger
       await refreshData();
     } catch (error) {
       console.error("Error triggering workflow:", error);
-      alert("Failed to trigger workflow: " + (error.response?.data?.message || error.message));
+      alert("✗ Failed to trigger workflow: " + (error.response?.data?.message || error.message));
     } finally {
-      setLoading(false);
+      setRunningWorkflow(false);
     }
   };
 
@@ -200,24 +205,30 @@ function App() {
                 onClick={refreshData}
                 className="btn-secondary"
                 disabled={loading}
+                style={{
+                  opacity: loading ? 0.6 : 1,
+                  cursor: loading ? 'not-allowed' : 'pointer'
+                }}
               >
                 <RefreshCw size={16} style={{ display: 'inline', marginRight: '0.5rem' }} />
-                Refresh
+                {loading ? 'Loading...' : 'Refresh'}
               </button>
               {workflowStatus.is_authenticated && (
                 <button
                   data-testid="run-now-btn"
                   onClick={triggerWorkflowNow}
                   className="btn-secondary"
-                  disabled={loading}
+                  disabled={runningWorkflow}
                   style={{
-                    backgroundColor: '#059669',
+                    backgroundColor: runningWorkflow ? '#6B7280' : '#059669',
                     color: 'white',
-                    borderColor: '#059669'
+                    borderColor: runningWorkflow ? '#6B7280' : '#059669',
+                    opacity: runningWorkflow ? 0.7 : 1,
+                    cursor: runningWorkflow ? 'not-allowed' : 'pointer'
                   }}
                 >
                   <PlayCircle size={16} style={{ display: 'inline', marginRight: '0.5rem' }} />
-                  Run Now
+                  {runningWorkflow ? 'Processing...' : 'Run Now'}
                 </button>
               )}
               {!workflowStatus.is_authenticated ? (
