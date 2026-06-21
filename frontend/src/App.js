@@ -73,6 +73,22 @@ function App() {
     }
   };
 
+  // Trigger workflow manually
+  const triggerWorkflowNow = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.post(`${API}/workflow/trigger`);
+      alert(response.data.message);
+      // Refresh data after trigger
+      await refreshData();
+    } catch (error) {
+      console.error("Error triggering workflow:", error);
+      alert("Failed to trigger workflow: " + (error.response?.data?.message || error.message));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Connect Gmail
   const connectGmail = () => {
     window.location.href = `${API}/oauth/gmail/login?user_id=default_user`;
@@ -188,6 +204,22 @@ function App() {
                 <RefreshCw size={16} style={{ display: 'inline', marginRight: '0.5rem' }} />
                 Refresh
               </button>
+              {workflowStatus.is_authenticated && (
+                <button
+                  data-testid="run-now-btn"
+                  onClick={triggerWorkflowNow}
+                  className="btn-secondary"
+                  disabled={loading}
+                  style={{
+                    backgroundColor: '#059669',
+                    color: 'white',
+                    borderColor: '#059669'
+                  }}
+                >
+                  <PlayCircle size={16} style={{ display: 'inline', marginRight: '0.5rem' }} />
+                  Run Now
+                </button>
+              )}
               {!workflowStatus.is_authenticated ? (
                 <button
                   data-testid="connect-gmail-btn"

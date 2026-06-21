@@ -427,6 +427,16 @@ async def toggle_workflow():
     else:
         return {"message": "Workflow stopped", "enabled": False}
 
+@api_router.post("/workflow/trigger")
+async def trigger_workflow_manually():
+    """Manually trigger the workflow immediately (for testing)"""
+    try:
+        await process_email_workflow()
+        return {"message": "Workflow executed successfully", "success": True}
+    except Exception as e:
+        logger.error(f"Manual trigger failed: {e}")
+        return {"message": f"Workflow failed: {str(e)}", "success": False}
+
 @api_router.get("/emails/processed")
 async def get_processed_emails(limit: int = 50):
     """Get processed emails"""
