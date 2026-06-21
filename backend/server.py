@@ -182,7 +182,7 @@ async def generate_ai_reply(from_email: str, subject: str, body: str) -> str:
             api_key=EMERGENT_LLM_KEY,
             session_id=str(uuid.uuid4()),
             system_message="You are a professional email assistant. Reply to emails in a helpful, professional, and concise manner."
-        ).with_model("openai", "gpt-3.5-turbo")
+        ).with_model("openai", "gpt-5.4-mini")
         
         user_prompt = f"Read this email and draft a reply. Email from: {from_email} Subject: {subject} Body: {body}"
         user_message = UserMessage(text=user_prompt)
