@@ -649,12 +649,48 @@ async def update_settings(settings: WorkflowSettings):
     return {"message": "Settings updated successfully"}
 
 @api_router.post("/auth/logout")
-async def logout(user_id: str = "default_user"):
-    """Logout and disconnect Gmail"""
-    result = await db.gmail_tokens.delete_one({"user_id": user_id})
-    if result.deleted_count > 0:
-        return {"message": "Successfully disconnected Gmail", "success": True}
-    return {"message": "No connection found", "success": False}
+async def logout(user_id: str = "default_user", clear_data: bool = True):
+    """Logout and disconnect Gmail, optionally clear all data"""
+    try:
+        # Delete Gmail tokens
+        token_result = await db.gmail_tokens.delete_one({"user_id": user_id})
+        
+        if clear_data:
+            # Clear all processed emails
+            await db.processed_emails.delete_many({})
+            
+            # Clear all error logs
+            await db.error_logs.delete_many({})
+            
+            # Clear workflow config
+            await db.workflow_config.delete_many({})
+            
+            # Clear OAuth states
+            await db.oauth_states.delete_many({})
+            
+            logger.info(f"Cleared all data for user: {user_id}")
+            
+            return {
+                "message": "Successfully disconnected Gmail and cleared all data",
+                "success": True,
+                "data_cleared": True
+            }
+        
+        if token_result.deleted_count > 0:
+            return {
+                "message": "Successfully disconnected Gmail (data preserved)",
+                "success": True,
+                "data_cleared": False
+            }
+        
+        return {
+            "message": "No connection found",
+            "success": False,
+            "data_cleared": False
+        }
+    except Exception as e:
+        logger.error(f"Logout error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 @api_router.get("/errors")
 async def get_errors(limit: int = 20, skip: int = 0, days: int = None):

@@ -17,6 +17,7 @@ import {
   Download
 } from "lucide-react";
 import Settings from "@/components/Settings";
+import LogoutConfirmation from "@/components/LogoutConfirmation";
 
 const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
 const API = `${BACKEND_URL}/api`;
@@ -43,6 +44,7 @@ function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
   const [runningWorkflow, setRunningWorkflow] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   const ITEMS_PER_PAGE = 20;
 
@@ -123,14 +125,28 @@ function App() {
   };
 
   // Logout
-  const handleLogout = async () => {
-    if (!window.confirm("Disconnect Gmail account? You'll need to reconnect to process emails.")) {
-      return;
-    }
+  const handleLogout = async (clearData = true) => {
     try {
-      await axios.post(`${API}/auth/logout?user_id=default_user`);
-      alert("✓ Gmail disconnected successfully");
+      const response = await axios.post(`${API}/auth/logout?user_id=default_user&clear_data=${clearData}`);
+      
+      if (clearData) {
+        // Clear local state
+        setProcessedEmails([]);
+        setEmailsTotal(0);
+        setEmailsPage(0);
+        setErrors([]);
+        setErrorsTotal(0);
+        setErrorsPage(0);
+        setSelectedEmail(null);
+      }
+      
+      // Refresh workflow status
       await fetchWorkflowStatus();
+      
+      alert("✓ " + response.data.message);
+      
+      // Navigate to dashboard
+      setActiveTab('dashboard');
     } catch (error) {
       console.error("Error logging out:", error);
       alert("✗ Failed to disconnect Gmail");
@@ -297,7 +313,7 @@ function App() {
               </button>
               <button
                 data-testid="logout-btn"
-                onClick={handleLogout}
+                onClick={() => setShowLogoutModal(true)}
                 style={{
                   textAlign: 'left',
                   padding: '0.75rem 1rem',
@@ -900,6 +916,13 @@ function App() {
         isOpen={showSettings} 
         onClose={() => setShowSettings(false)}
         onSave={refreshData}
+      />
+
+      {/* Logout Confirmation Modal */}
+      <LogoutConfirmation
+        isOpen={showLogoutModal}
+        onClose={() => setShowLogoutModal(false)}
+        onConfirm={handleLogout}
       />
     </div>
   );
