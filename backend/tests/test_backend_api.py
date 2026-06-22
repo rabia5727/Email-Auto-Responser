@@ -2,7 +2,7 @@ import os
 import requests
 import pytest
 
-BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://reply-automation-hub-1.preview.emergentagent.com').rstrip('/')
+BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', 'https://email-workflow-hub-1.preview.emergentagent.com').rstrip('/')
 
 @pytest.fixture
 def api():

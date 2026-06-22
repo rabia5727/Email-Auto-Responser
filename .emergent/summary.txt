@@ -1,0 +1,374 @@
+<analysis>**original_problem_statement:** Build an AI email auto-responder workflow. Features include:
+1. Schedule Trigger running every 5 minutes.
+2. Fetch max 5 unread emails from Gmail INBOX with UNREAD label.
+3. Generate AI reply using an LLM.
+4. Create a draft reply in Gmail (To: original sender, Subject: Re: original).
+5. Mark original email as READ.
+6. Error handling to continue workflow if a step fails.
+*Additional User Requests:* Full-stack web application with a dashboard, initially requested Emergent LLM key but later switched to a free LLM (Groq), email filtering (VIP senders, blacklists), adjustable processing limits, custom AI prompts, data pagination, user-specific data isolation (multi-tenant backup approach), and export to CSV.
+
+**User's preferred language**: English
+(INSTRUCT NEXT AGENT: Respond in English only)
+
+**what currently exists?** 
+A full-stack React and FastAPI application with MongoDB. The app handles Gmail OAuth 2.0 (with PKCE using ), fetches unread emails, uses  (configured for Groq) to generate replies, creates drafts, and marks emails as read. It includes a background scheduler (), a Settings panel for configuring limits/prompts/VIPs, paginated data tables for processed emails and errors, and multi-user data isolation based on . Comprehensive local setup documentation (, , etc.) has been generated.
+
+**Last working item**: 
+- **Last item agent was working:** Investigating a sudden 502 Bad Gateway error and a blank frontend reported by the user right at the end of the session. The agent attempted to run a bash command to check the status, but the tool execution failed.
+- **Status:** BLOCKED
+- **Agent Testing Done:** N
+- **Which testing method agent to use?** backend testing agent/ manual testing by curl. Check backend logs to diagnose the crash.
+- **User Testing Done:** N
+
+**All Pending/In progress Issue list**:
+Issue 1: Backend crashed resulting in 502 Bad Gateway (P0)
+Issue 2: Verify user data persistence visibility on Frontend (P1)
+
+Issues Detail:
+- Issue 1: Backend crashed resulting in 502 Bad Gateway
+  - Attempted fixes: Agent tried to run  to investigate but the tool failed.
+  - Next debug checklist: Check backend                          BACKOFF   Exited too quickly (process log may have details)
+code-server                      STOPPED   Not started
+frontend                         STOPPED   Jun 22 09:10 AM
+mongodb                          RUNNING   pid 49, uptime 0:00:03
+nginx-code-proxy                 RUNNING   pid 41, uptime 0:00:03. Run INFO:     Application shutdown complete.
+INFO:     Finished server process [29824]
+INFO:     Started server process [29893]
+INFO:     Waiting for application startup.
+2026-06-21 16:53:11,500 - server - INFO - Scheduler configured but not started (workflow disabled)
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'server.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [29893]
+INFO:     Started server process [30004]
+INFO:     Waiting for application startup.
+2026-06-21 16:53:28,087 - server - INFO - Scheduler configured but not started (workflow disabled)
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'server.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [30004]
+INFO:     Started server process [30069]
+INFO:     Waiting for application startup.
+2026-06-21 16:53:46,606 - server - INFO - Scheduler configured but not started (workflow disabled)
+INFO:     Application startup complete.
+WARNING:  WatchFiles detected changes in 'server.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [30069]
+INFO:     Started server process [30225]
+INFO:     Waiting for application startup.
+2026-06-21 16:54:18,653 - server - INFO - Scheduler configured but not started (workflow disabled)
+INFO:     Application startup complete.
+2026-06-21 17:05:20,506 - server - INFO - Gmail OAuth successful for user: testingcorner1@gmail.com
+2026-06-21 17:09:56,590 - server - INFO - Starting email processing workflow...
+2026-06-21 17:09:56,594 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2026-06-21 17:09:57,516 - server - INFO - Found 5 unread emails
+[92m17:09:58 - LiteLLM:INFO[0m: utils.py:3427 - 
+LiteLLM completion() model= gpt-5.4-mini; provider = openai
+2026-06-21 17:09:58,373 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-5.4-mini; provider = openai
+2026-06-21 17:10:01,868 - server - INFO - Successfully processed email: [Product Update] Automatic enablement of new OpenTelemetry ingestion API
+[92m17:10:02 - LiteLLM:INFO[0m: utils.py:3427 - 
+LiteLLM completion() model= gpt-5.4-mini; provider = openai
+2026-06-21 17:10:02,659 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-5.4-mini; provider = openai
+2026-06-21 17:10:05,443 - server - INFO - Successfully processed email: [Action Advised] Review Google Cloud credential security best practices
+[92m17:10:06 - LiteLLM:INFO[0m: utils.py:3427 - 
+LiteLLM completion() model= gpt-5.4-mini; provider = openai
+2026-06-21 17:10:06,251 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-5.4-mini; provider = openai
+2026-06-21 17:10:08,981 - server - INFO - Successfully processed email: Trouble getting started? Let’s make it easier
+[92m17:10:09 - LiteLLM:INFO[0m: utils.py:3427 - 
+LiteLLM completion() model= gpt-5.4-mini; provider = openai
+2026-06-21 17:10:09,773 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-5.4-mini; provider = openai
+2026-06-21 17:10:12,302 - server - INFO - Successfully processed email: Ongoing resources for your Groq journey!
+[92m17:10:13 - LiteLLM:INFO[0m: utils.py:3427 - 
+LiteLLM completion() model= gpt-5.4-mini; provider = openai
+2026-06-21 17:10:13,126 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-5.4-mini; provider = openai
+2026-06-21 17:10:15,708 - server - INFO - Successfully processed email: What can you build?
+2026-06-21 17:10:34,651 - server - INFO - Starting email processing workflow...
+2026-06-21 17:10:34,653 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2026-06-21 17:10:35,536 - server - INFO - Found 1 unread emails
+[92m17:10:36 - LiteLLM:INFO[0m: utils.py:3427 - 
+LiteLLM completion() model= gpt-5.4-mini; provider = openai
+2026-06-21 17:10:36,355 - LiteLLM - INFO - 
+LiteLLM completion() model= gpt-5.4-mini; provider = openai
+2026-06-21 17:10:39,423 - server - INFO - Successfully processed email: About project
+2026-06-21 17:12:06,743 - server - INFO - Starting email processing workflow...
+2026-06-21 17:12:06,745 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2026-06-21 17:12:07,580 - server - INFO - Found 0 unread emails
+WARNING:  WatchFiles detected changes in 'server.py'. Reloading...
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [30225]
+INFO:     Started server process [33778]
+INFO:     Waiting for application startup.
+2026-06-21 17:14:18,690 - server - INFO - Scheduler configured but not started (workflow disabled)
+INFO:     Application startup complete.
+2026-06-21 17:14:42,924 - server - INFO - Starting email processing workflow...
+2026-06-21 17:14:42,926 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2026-06-21 17:14:43,787 - server - INFO - Found 0 unread emails
+2026-06-21 17:15:22,478 - server - INFO - Starting email processing workflow...
+2026-06-21 17:15:22,481 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2026-06-21 17:15:23,332 - server - INFO - Found 0 unread emails
+2026-06-21 17:17:10,682 - server - INFO - Starting email processing workflow...
+2026-06-21 17:17:10,685 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2026-06-21 17:17:11,574 - server - INFO - Found 0 unread emails
+2026-06-21 17:17:55,500 - server - INFO - Starting email processing workflow...
+2026-06-21 17:17:55,502 - googleapiclient.discovery_cache - INFO - file_cache is only supported with oauth2client<4.0.0
+2026-06-21 17:17:55,840 - server - INFO - Found 0 unread emails
+supervisor: couldn't exec /root/.venv/bin/uvicorn: ENOEXEC
+supervisor: child process was not spawned
+supervisor: couldn't exec /root/.venv/bin/uvicorn: ENOEXEC
+supervisor: child process was not spawned
+supervisor: couldn't exec /root/.venv/bin/uvicorn: ENOEXEC
+supervisor: child process was not spawned and INFO:     10.169.1.66:36036 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.5.68:35232 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:35220 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.1.66:37274 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:35220 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:37274 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:35220 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.5.68:37490 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:37490 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.5.68:37492 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:37490 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:34000 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:37490 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.5.68:37490 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:37490 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.5.68:52914 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:37490 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.1.66:45566 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:45566 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:45566 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:45566 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.5.68:37490 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:37490 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:37490 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:45566 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:37490 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:45566 - "POST /api/workflow/trigger HTTP/1.1" 200 OK
+INFO:     10.169.5.68:50302 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:50306 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.1.66:45566 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:52894 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:57734 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:57734 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:57734 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:52894 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.5.68:52894 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.5.68:38464 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:41632 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:41632 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.1.66:44784 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:44798 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:58440 - "POST /api/workflow/trigger HTTP/1.1" 200 OK
+INFO:     10.169.1.66:44784 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:58448 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:44784 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.5.68:58448 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.1.66:44784 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:44784 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.1.66:44798 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:53456 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:53472 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.5.68:37476 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:60568 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.1.66:60568 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:43442 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:43442 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:60568 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.5.68:43442 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:39616 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.5.68:41006 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:41010 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:36200 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.5.68:45336 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:45338 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:45338 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.5.68:45338 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:36200 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:45966 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.1.66:45966 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:45966 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:57762 - "GET /api/emails/processed?limit=5 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:45674 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.1.66:46110 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:45674 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:46110 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.5.68:45674 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:45674 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:34892 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.5.68:43256 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:43258 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:34892 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.5.68:43258 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:34896 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:34896 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:43258 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:34892 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:43258 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:34896 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:34892 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.1.66:34910 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:43258 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.1.66:34892 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:34896 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:43258 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:43258 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:43256 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:34896 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.5.68:43258 - "GET /api/workflow/status HTTP/1.1" 200 OK
+INFO:     10.169.5.68:43256 - "GET /api/emails/processed?limit=20&skip=0 HTTP/1.1" 200 OK
+INFO:     10.169.1.66:34896 - "GET /api/errors?limit=20&skip=0 HTTP/1.1" 200 OK to identify why the FastApi server crashed.
+  - Why fix this issue and what will be achieved with the fix? The application is currently completely inaccessible to the user.
+  - Status: BLOCKED
+  - Is recurring issue? Y (Backend has crashed previously due to syntax errors).
+  - Should Test frontend/backend/both after fix? Both
+  - Blocked on other issue: None
+
+- Issue 2: Verify user data persistence visibility on Frontend
+  - Attempted fixes: The agent updated Pydantic models to include  and manually updated existing DB records via a Python script. However, the app crashed before verification could be completed.
+  - Next debug checklist: Once the backend is running, verify that  and  correctly filter and return data for the authenticated user, and that the frontend renders it correctly.
+  - Why fix this issue and what will be achieved with the fix? Ensures the multi-tenant backup functionality requested by the user works seamlessly.
+  - Status: USER VERIFICATION PENDING
+  - Is recurring issue? N
+  - Should Test frontend/backend/both after fix? Frontend
+
+**In progress Task List**:
+None. The focus must be entirely on resolving the 502 crash.
+
+**Upcoming and Future Tasks**:
+Upcoming Tasks:
+- Add visual indicators for Processed, Failed, Pending specifically on individual emails if not fully robust. (P1)
+- Test multi-account switching workflow (disconnecting one Gmail and connecting another) to ensure zero cross-contamination of  filtered data. (P1)
+
+Future Tasks:
+- Implement Slack/Discord notifications for processed emails.
+- Implement email categories/sentiment analysis.
+
+**Completed work in this session**:
+- Initial React/FastAPI/MongoDB setup with Shadcn UI (DONE)
+- Gmail OAuth implementation with PKCE using  (DONE)
+- AI email processing workflow using  and Groq (DONE)
+- Settings panel with VIP senders, adjustable limits, and custom prompts (DONE)
+- Data pagination and filtering for processed emails/errors (DONE)
+- Multi-user data isolation refactoring using  (DONE)
+- Local development documentation generation (DONE)
+
+**Earlier issues found/mentioned but not fixed**:
+None. Agent was highly responsive to bug reports until the final crash.
+
+**Known issue recurrence from previous fork**:
+- Issue recurrence in previous fork: None from previous fork, but within this session, the backend has crashed multiple times due to  (e.g., accidental paste of a github URL on line 1 of ).
+- Recurrence count: 1
+- Status: RESOLVED (Previously), but a new crash just occurred.
+
+**Code Architecture**:
+
+
+**Key Technical Concepts**:
+React, FastAPI, MongoDB (Motor), Gmail API, OAuth 2.0 (PKCE via Authlib), APScheduler (Background tasks), LiteLLM (Groq API).
+
+**key DB schema**:
+- oauth_states: 
+- gmail_tokens: 
+- processed_emails: 
+- error_logs: 
+- workflow_config: 
+
+**changes in tech stack**:
+- Replaced  with  to correctly handle Google's strict PKCE () requirements for web apps.
+- Replaced Emergent OpenAI key usage with direct  configured for Groq per user request for a free LLM.
+
+**All files of reference**:
+- : Core logic for API, Auth, scheduling, and LLM processing.
+- : Custom webpack config to handle  and plugin errors.
+- : Main UI layout and state management.
+- : Settings modal for workflow configuration.
+- Local docs: , , , , .
+
+**Areas that need refactoring**:
+-  is becoming a monolith (850+ lines). Routing, Database logic, OAuth logic, and the Email Processing Workflow could be split into separate modules if development continues extensively.
+
+**key api endpoints**:
+- : Start OAuth
+- : OAuth PKCE callback
+- : Get scheduling status
+-  & : Control scheduler
+- : Manual processing trigger
+- : Paginated processed emails
+- : Paginated error logs
+-  & : Manage config
+- : Clear tokens
+
+**Critical Info for New Agent**:
+- **CRITICAL BACKEND CRASH**: The session ended with the user reporting a 502 Bad Gateway and the agent's bash tool failing. You MUST immediately check backend logs () to fix the crash.
+- **Data Isolation**: A major refactor just occurred to isolate all DB records by . When debugging UI data fetching, ensure the API is receiving the correct  context from the frontend/tokens.
+- **OAuth Framework**: The app uses  for OAuth because Google enforces PKCE for web callbacks, which standard  was failing on. Do not revert this.
+- **Hot Reload**: Backend and frontend hot reload is active.
+
+**documents and test reports created in this job**:
+- /app/README.md
+- /app/LOCAL_SETUP.md
+- /app/TROUBLESHOOTING.md
+- /app/DEPLOYMENT.md
+- /app/test_reports/iteration_1.json (Early testing report)
+
+**Last 10 User Messages and any pending HUMAN messages**:
+1. User: shared screenshot showing 502 Bad Gateway. (Status: IN PROGRESS/BLOCKED by crash)
+2. User: asked why they can't see the code and preview is not working. (Status: PENDING)
+3. User: you taking so much time slow down, why my app is not working? (Status: ADDRESSED - Agent explained DB update)
+4. User: the frontend still didnt showing anything" (Status: ADDRESSED - Agent manually updated DB missing fields)
+5. User: asked difference between run now and start workflow, reported fetching not working. (Status: ADDRESSED - Agent fixed Pydantic models missing `user_email`)
+6. User: clarified they want typical backup process (disconnect keeps data, reconnect shows it). (Status: COMPLETED - Major refactor done)
+7. User: "hey buddy it should automatically clear the data when disconnect and when connected with the same gmail account should show its all data" (Status: ADDRESSED - Handled in refactor)
+8. User: "its running but when its disconnected it doesnt show zero on eveything (Status: ADDRESSED - Agent added clear data button)
+9. User: when i clicking on connect gmail its keep on laoding... (Status: COMPLETED - Agent fixed syntax error in server.py)
+10. User: noticed disconnecting keeps showing previous account data logs. (Status: ADDRESSED - Agent attempted logout logic fix)
+
+**Project Health Check**:
+- Broken: Backend server is currently crashed (502 Bad Gateway).
+- Mocked: None. Actual Gmail API and Groq LLMs are being used.
+
+**3rd Party Integrations**:
+- Google Workspace/Gmail API (Email fetching/modifying) — requires User OAuth Credentials
+- Groq via LiteLLM (Text Generation) — Currently configured for Groq; ensure API key is provided/handled if testing.
+
+**Testing status**:
+- Testing agent used after significant changes: YES (Early in the process, but not after the major refactors).
+- Troubleshoot agent used after agent stuck in loop: NO
+- Test files created:  (Created by testing agent earlier).
+- Known regressions: Backend crashing due to careless file edits (SyntaxErrors).
+
+**Credentials to test flow**:
+Check  for configured credentials or ask the user to re-authenticate via the UI once the backend is stable.
+
+**What agent forgot to execute**:
+The agent forgot to verify the exact cause of the 502 Bad Gateway before the session abruptly ended (due to a tool execution failure). The agent also did not run the testing subagent after the massive multi-tenant database refactor.
+
+**Debugging checklist for current issue**
+    Issue: 502 Bad Gateway / Backend Crash
+
+    Backend files to check:
+    - 
+    - 
+    -  (Check for stray syntax errors introduced during recent string replacements, similar to the github URL paste issue).
+    
+    Database to check:
+    - Verify MongoDB connection isn't exhausted.
+   
+    backend                          BACKOFF   Exited too quickly (process log may have details)
+code-server                      STOPPED   Not started
+frontend                         STOPPED   Jun 22 09:10 AM
+mongodb                          RUNNING   pid 49, uptime 0:00:03
+nginx-code-proxy                 RUNNING   pid 41, uptime 0:00:03</analysis>
