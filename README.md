@@ -1,62 +1,41 @@
-# AI Email Auto-Responder
+# AutoReply — AI Email Auto-Responder
 
-🤖 Intelligent email workflow automation with AI-powered replies using GPT-5.4-mini
+> 🤖 Intelligent email workflow automation with AI-powered replies using GPT-5.4-mini
 
-## Features
+---
 
-✅ **Smart Email Processing**
-- Automatic fetching of unread Gmail emails
-- AI-generated professional replies using OpenAI GPT-5.4-mini
-- Draft creation in Gmail (with optional auto-send)
-- Email status tracking (Processed ✓ / Failed ✗)
+## 🚀 Quick Overview
 
-✅ **Advanced Filtering**
-- VIP Senders - Skip important contacts for manual reply
-- Whitelist - Only process specific senders
-- Blacklist - Ignore specific senders
-- Adjustable processing limit (1-50 emails per run)
+**AutoReply** connects to your Gmail, reads unread emails, generates professional AI replies, and creates drafts — automatically.
 
-✅ **Workflow Management**
-- Manual trigger (Run Now button)
-- Automatic scheduling (every 5 minutes)
-- Custom AI prompts for reply generation
-- Success rate tracking and analytics
+**What it does:**
+- 📥 Reads unread Gmail emails
+- 🤖 Generates AI replies with GPT-5.4-mini
+- ✍️ Creates drafts for review (or auto-sends)
+- ⏱️ Runs every 5 minutes automatically
+- 📊 Full dashboard with metrics and logs
 
-✅ **Data Management**
-- Pagination (20 items per page)
-- Date filters (Last 7/30 days, All time)
-- CSV export for processed emails
-- Clear old data functionality
-- Search and filter capabilities
+**Who it's for:**
+- Busy professionals drowning in emails
+- Agencies managing client communication
+- Anyone who wants to save 10+ hours/week
 
-✅ **Professional Dashboard**
-- Real-time metrics and statistics
-- Error logs with detailed tracking
-- Gmail account management (connect/disconnect)
-- Responsive Swiss & High-Contrast design
+---
 
-## Tech Stack
+## 🛠️ Tech Stack
 
-**Frontend:**
-- React 18
-- Axios for API calls
-- Lucide React icons
-- Custom CSS with modern design system
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | React 18, Axios, Lucide Icons |
+| **Backend** | FastAPI (Python) |
+| **Database** | MongoDB (Motor async driver) |
+| **Scheduler** | APScheduler |
+| **AI** | OpenAI GPT-5.4-mini (via Emergent) |
+| **Email** | Gmail API (OAuth 2.0) |
 
-**Backend:**
-- FastAPI (Python)
-- MongoDB (Motor async driver)
-- APScheduler for background tasks
-- Gmail API integration
-- Emergent Integrations (OpenAI GPT-5.4-mini)
+---
 
-**Infrastructure:**
-- Hot reload enabled for development
-- Supervisor for process management
-- CORS configured
-- Environment-based configuration
-
-## Quick Start
+## ⚡ Quick Start
 
 ### Prerequisites
 
@@ -68,10 +47,8 @@
 
 ### Installation
 
-See [LOCAL_SETUP.md](./LOCAL_SETUP.md) for detailed setup instructions.
-
 ```bash
-# 1. Clone repository
+# 1. Clone the repo
 git clone <your-repo-url>
 cd ai-email-auto-responder
 
@@ -81,15 +58,16 @@ python -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env
-# Edit .env with your credentials
 
 # 3. Frontend setup
 cd ../frontend
 yarn install
 cp .env.example .env
-# Edit .env with backend URL
 
-# 4. Run locally
+# 4. Configure environment variables
+# Edit backend/.env and frontend/.env with your credentials
+
+# 5. Run it
 # Terminal 1 - Backend
 cd backend && python server.py
 
@@ -97,129 +75,136 @@ cd backend && python server.py
 cd frontend && yarn start
 ```
 
-### Environment Variables
+**Access:** http://localhost:3000
 
-**Backend (.env):**
-```env
+---
+
+## 🔑 Required Credentials
+
+| Credential | Where to Get It |
+|------------|-----------------|
+| **Gmail API Credentials** | [Google Cloud Console](https://console.cloud.google.com/) |
+| **OpenAI API Key** | [OpenAI Platform](https://platform.openai.com/api-keys) (or Emergent) |
+| **MongoDB URL** | Local installation or [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) |
+
+### Gmail API Setup
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select existing
+3. Navigate to **APIs & Services** → **Library**
+4. Search for **Gmail API** and enable it
+5. Go to **APIs & Services** → **Credentials**
+6. Click **Create Credentials** → **OAuth 2.0 Client IDs**
+7. Select **Web application** as the type
+8. Add authorized redirect URIs:
+   - Local: `http://localhost:8001/api/oauth/gmail/callback`
+   - Production: `https://your-domain.com/api/oauth/gmail/callback`
+9. Copy Client ID and Client Secret
+10. Add your email as a **Test User** in OAuth consent screen
+
+### OpenAI API Setup
+
+1. Go to [OpenAI Platform](https://platform.openai.com/api-keys)
+2. Sign up or log in
+3. Click **Create new secret key**
+4. Name it (e.g., "AutoReply")
+5. Copy the key immediately
+
+### MongoDB Setup
+
+**Option A: Local Installation**
+```bash
+sudo apt-get install mongodb  # Ubuntu/Debian
+sudo systemctl start mongod
+# URL: mongodb://localhost:27017
+```
+
+**Option B: MongoDB Atlas (Cloud)**
+1. Go to [MongoDB Atlas](https://www.mongodb.com/cloud/atlas)
+2. Create free account
+3. Create cluster (free tier)
+4. Get connection string
+5. Add IP to whitelist
+
+---
+
+## 🔧 Environment Variables
+
+### Backend (.env)
+```
 MONGO_URL=mongodb://localhost:27017
 DB_NAME=email_automation
 CORS_ORIGINS=http://localhost:3000
-EMERGENT_LLM_KEY=your_emergent_key_here
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
+EMERGENT_LLM_KEY=your_key_here
+GOOGLE_CLIENT_ID=your_client_id
+GOOGLE_CLIENT_SECRET=your_client_secret
 BACKEND_URL=http://localhost:8001
 ```
 
-**Frontend (.env):**
-```env
+### Frontend (.env)
+```
 REACT_APP_BACKEND_URL=http://localhost:8001
 ```
 
-## Gmail API Setup
+---
 
-1. Go to [Google Cloud Console](https://console.cloud.google.com)
-2. Create a new project or select existing
-3. Enable Gmail API
-4. Create OAuth 2.0 credentials (Web application)
-5. Add authorized redirect URIs:
-   - Local: `http://localhost:8001/api/oauth/gmail/callback`
-   - Production: `https://your-domain.com/api/oauth/gmail/callback`
-6. Download credentials and add to `.env`
+## 📋 Key Features
 
-## Usage
+### Smart Email Processing
+- ✅ Auto-fetch unread emails
+- ✅ AI-generated professional replies
+- ✅ Draft creation (optional auto-send)
+- ✅ Status tracking (Processed ✓ / Failed ✗)
 
-### First Time Setup
+### Advanced Controls
+- 🛡️ VIP Senders — Skip important contacts
+- ✅ Whitelist — Only process specific senders
+- 🚫 Blacklist — Ignore specific senders
+- ⚙️ Adjustable processing limit (1-50 emails/run)
 
-1. **Connect Gmail:**
-   - Click "Connect Gmail" button
-   - Complete OAuth flow
-   - Grant required permissions
+### Dashboard & Analytics
+- 📊 Real-time metrics
+- 📝 Error logs with tracking
+- 📥 CSV export
+- 🔍 Search and filter
 
-2. **Configure Settings:**
-   - Click "Settings" in sidebar
-   - Set processing limit (default: 5)
-   - Add VIP senders if needed
-   - Customize AI prompt (optional)
-   - Save settings
+---
 
-3. **Process Emails:**
-   - Click "Run Now" for immediate processing
-   - Or enable "Start Workflow" for automatic processing every 5 minutes
+## 📖 API Endpoints
 
-### VIP Senders (Important Emails)
+| Endpoint | Method | Purpose |
+|----------|--------|---------|
+| `/api/workflow/status` | GET | Get workflow status |
+| `/api/workflow/toggle` | POST | Start/stop workflow |
+| `/api/workflow/trigger` | POST | Run now |
+| `/api/emails/processed` | GET | View processed emails |
+| `/api/emails/export` | GET | Export CSV |
+| `/api/settings` | GET/POST | Manage settings |
+| `/api/oauth/gmail/login` | GET | Connect Gmail |
+| `/api/errors` | GET | View error logs |
 
-Add email addresses that should NOT be auto-replied:
-1. Settings → VIP Senders section
-2. Enter email address (e.g., boss@company.com)
-3. Click "Add VIP"
-4. These emails will remain unread for manual reply
+---
 
-### Data Management
+## 🗄️ Database Schema
 
-**Viewing Processed Emails:**
-- Navigate to "Processed Emails" tab
-- Use date filters: All Time / Last 7 Days / Last 30 Days
-- Browse pages (20 emails per page)
-- Click any email to view AI-generated reply
+| Collection | Purpose |
+|------------|---------|
+| **gmail_tokens** | OAuth tokens for Gmail |
+| **processed_emails** | Email history + AI replies |
+| **error_logs** | Error tracking |
+| **workflow_config** | Settings and filters |
+| **oauth_states** | Temporary OAuth states |
 
-**Exporting Data:**
-- Click "Export CSV" button (appears after processing emails)
-- Downloads all processed emails with timestamps and replies
+---
 
-**Cleaning Old Data:**
-- Click "Clear Old" button on Processed Emails or Error Logs
-- Deletes data older than 30 days
-- Confirms before deletion
-
-## API Documentation
-
-### Workflow Endpoints
+## 📂 Project Structure
 
 ```
-GET  /api/workflow/status       - Get workflow status and stats
-POST /api/workflow/toggle       - Start/stop automatic workflow
-POST /api/workflow/trigger      - Manually trigger workflow now
-```
-
-### Email Endpoints
-
-```
-GET    /api/emails/processed    - Get processed emails (paginated)
-GET    /api/emails/export       - Export emails as CSV
-GET    /api/emails/search       - Search emails by sender/subject
-DELETE /api/emails/cleanup      - Delete old emails (30+ days)
-```
-
-### Settings Endpoints
-
-```
-GET  /api/settings              - Get workflow settings
-POST /api/settings              - Update workflow settings
-```
-
-### Auth Endpoints
-
-```
-GET  /api/oauth/gmail/login     - Initiate Gmail OAuth
-GET  /api/oauth/gmail/callback  - Handle OAuth callback
-POST /api/auth/logout           - Disconnect Gmail account
-```
-
-### Error Endpoints
-
-```
-GET    /api/errors              - Get error logs (paginated)
-DELETE /api/errors/cleanup      - Delete old errors (30+ days)
-```
-
-## Project Structure
-
-```
-/app/
+ai-email-auto-responder/
 ├── backend/
 │   ├── server.py              # FastAPI application
 │   ├── requirements.txt       # Python dependencies
-│   └── .env                   # Backend config
+│   └── .env                   # Backend configuration
 ├── frontend/
 │   ├── src/
 │   │   ├── App.js            # Main React component
@@ -228,7 +213,7 @@ DELETE /api/errors/cleanup      - Delete old errors (30+ days)
 │   │   └── components/
 │   │       └── Settings.js   # Settings modal
 │   ├── package.json          # Node dependencies
-│   └── .env                  # Frontend config
+│   └── .env                  # Frontend configuration
 ├── memory/
 │   └── test_credentials.md   # Test account info
 ├── design_guidelines.json    # UI/UX design system
@@ -236,67 +221,19 @@ DELETE /api/errors/cleanup      - Delete old errors (30+ days)
 └── LOCAL_SETUP.md           # Local development guide
 ```
 
-## Database Schema
+---
 
-**Collections:**
+## 🔒 Security Notes
 
-```javascript
-// gmail_tokens
-{
-  user_id: String,
-  access_token: String,
-  refresh_token: String,
-  expires_at: DateTime,
-  client_id: String,
-  client_secret: String,
-  token_uri: String
-}
+- ⚠️ Never commit `.env` files to Git
+- 🔐 Keep API keys secure
+- ✅ Use environment variables for all credentials
+- 📝 Review Gmail permissions before granting access
+- 🛡️ Use VIP senders for important contacts
 
-// processed_emails
-{
-  id: String (UUID),
-  email_id: String,
-  from_email: String,
-  subject: String,
-  body: String,
-  ai_reply: String,
-  draft_id: String,
-  processed_at: DateTime,
-  status: String  // "success" | "error"
-}
+---
 
-// error_logs
-{
-  id: String (UUID),
-  email_id: String (optional),
-  error_message: String,
-  error_type: String,
-  timestamp: DateTime
-}
-
-// workflow_config
-{
-  enabled: Boolean,
-  last_run: DateTime,
-  processing_limit: Number,
-  auto_send_drafts: Boolean,
-  custom_prompt: String,
-  sender_whitelist: [String],
-  sender_blacklist: [String],
-  vip_senders: [String]
-}
-
-// oauth_states (temporary)
-{
-  state: String,
-  user_id: String,
-  flow_data: Object,
-  created_at: DateTime,
-  expires_at: DateTime
-}
-```
-
-## Troubleshooting
+## 🐛 Troubleshooting
 
 ### Gmail OAuth Issues
 
@@ -312,19 +249,13 @@ DELETE /api/errors/cleanup      - Delete old errors (30+ days)
 
 **MongoDB Connection Failed:**
 ```bash
-# Check MongoDB is running
-sudo systemctl status mongod
-
-# Start MongoDB
-sudo systemctl start mongod
+sudo systemctl status mongod  # Check status
+sudo systemctl start mongod   # Start MongoDB
 ```
 
 **Import Error:**
 ```bash
-# Ensure virtual environment is activated
 source venv/bin/activate
-
-# Reinstall dependencies
 pip install -r requirements.txt
 ```
 
@@ -332,49 +263,22 @@ pip install -r requirements.txt
 
 **Module not found:**
 ```bash
-# Clear cache and reinstall
 rm -rf node_modules yarn.lock
 yarn install
 ```
 
 **CORS Error:**
-- Check `CORS_ORIGINS` in backend `.env`
-- Should include frontend URL: `http://localhost:3000`
-
-## Performance Optimization
-
-**For Heavy Usage (1000+ emails/month):**
-
-1. **Enable Pagination:** Already implemented (20 per page)
-2. **Regular Cleanup:** Use "Clear Old" button monthly
-3. **Filter by Date:** Use "Last 7 Days" for recent activity
-4. **MongoDB Indexes:** Added automatically on email_id and timestamp
-
-## Security Notes
-
-⚠️ **Important:**
-- Never commit `.env` files to Git
-- Keep API keys secure
-- Use environment variables for all credentials
-- Review Gmail permissions before granting access
-- Turn off auto-send for sensitive accounts
-- Use VIP senders for important contacts
-
-## Contributing
-
-This project was built with [Emergent AI](https://emergent.ai) - an AI-powered development platform.
-
-## License
-
-MIT License - See LICENSE file for details
-
-## Support
-
-For issues or questions:
-- Check [LOCAL_SETUP.md](./LOCAL_SETUP.md) for detailed setup
-- Review error logs in dashboard
-- Contact support for Emergent-specific features
+- Check CORS_ORIGINS in backend .env
+- Should include: `http://localhost:3000`
 
 ---
 
-**Built with ❤️ using Emergent AI Platform**
+## 📄 License
+
+MIT License
+
+---
+
+## 🙏 Built With
+
+Built with ❤️ using [Emergent AI Platform](https://emergent.com)
